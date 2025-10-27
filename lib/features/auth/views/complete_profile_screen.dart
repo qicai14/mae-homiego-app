@@ -1,73 +1,105 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:homiego/core/providers/auth_providers.dart';
+import 'package:homiego/core/providers/auth_providers.dart'; // To access authNotifierProvider
+import 'package:homiego/core/services/supabase_client.dart'; // To access supabase client
 import 'package:homiego/core/utils/show_snackbar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // For User
 
+// Re-use the loading provider from login/signup
+final authLoadingProvider = StateProvider<bool>((ref) => false);
+
+// --- Use ConsumerStatefulWidget for Controllers ---
 class CompleteProfileScreen extends ConsumerStatefulWidget {
   const CompleteProfileScreen({super.key});
 
   @override
-  ConsumerState<CompleteProfileScreen> createState() => _CompleteProfileScreenState();
+  ConsumerState<CompleteProfileScreen> createState() =>
+      _CompleteProfileScreenState();
 }
 
 class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
-  // Pre-fill name from signup if it exists
   late final TextEditingController _fullNameController;
-  final _contactController = TextEditingController();
-  
+  late final TextEditingController _contactNoController;
+  User? _currentUser; // Store current user info
+
   @override
   void initState() {
     super.initState();
-    final initialName = ref.read(authNotifierProvider).value?.profile?.fullName ?? '';
-    _fullNameController = TextEditingController(text: initialName);
+    _currentUser = supabase.auth.currentUser; // Get user on init
+    _fullNameController =
+        TextEditingController(text: _currentUser?.userMetadata?['full_name'] ?? ''); // Pre-fill if available
+    _contactNoController = TextEditingController();
   }
-  
+
   @override
   void dispose() {
     _fullNameController.dispose();
-    _contactController.dispose();
+    _contactNoController.dispose();
     super.dispose();
   }
 
-  Future<void> _updateProfile() async {
-    if (_fullNameController.text.isEmpty) {
-      showSnackBar(context, 'Please enter your full name', isError: true);
+  // --- SAVE PROFILE FUNCTION ---
+  Future<void> _saveProfile() async {
+    final fullName = _fullNameController.text.trim();
+    final contactNo = _contactNoController.text.trim();
+
+    // Basic validation
+    if (fullName.isEmpty) {
+      if (mounted) showSnackBar(context, 'Full Name cannot be empty.', isError: true);
       return;
     }
-    
+
+    if (_currentUser == null) {
+       if (mounted) showSnackBar(context, 'Error: Not logged in.', isError: true);
+       // Optional: Log out user if this happens
+       // ref.read(authNotifierProvider.notifier).signOut();
+       return;
+    }
+
+    ref.read(authLoadingProvider.notifier).state = true;
+
     try {
-      await ref.read(authNotifierProvider.notifier).completeProfile(
-        _fullNameController.text.trim(),
-        _contactController.text.trim(),
-      );
-      // AuthGate will see the profile is complete and navigate
-    } catch(e) {
-      showSnackBar(context, e.toString(), isError: true);
+      // Update the 'profiles' table
+      await supabase.from('profiles').update({
+        'full_name': fullName,
+        'contact_no': contactNo.isNotEmpty ? contactNo : null, // Store null if empty
+      }).eq('id', _currentUser!.id); // Match the logged-in user's ID
+
+      if (mounted) {
+        showSnackBar(context, 'Profile updated successfully!');
+        // --- CRUCIAL: Invalidate the provider to trigger AuthGate ---
+        ref.invalidate(authNotifierProvider);
+        // AuthGate will now re-run, see the profile is complete, and navigate
+      }
+
+    } catch (e) {
+      if (mounted) {
+        showSnackBar(context, 'Failed to update profile: $e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        ref.read(authLoadingProvider.notifier).state = false;
+      }
     }
   }
+  // --- END SAVE PROFILE FUNCTION ---
+
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
-    final isLoading = authState.isLoading;
-
-    ref.listen(authNotifierProvider, (previous, next) {
-      if (next.hasError && !next.isLoading) {
-        showSnackBar(context, next.error.toString(), isError: true);
-      }
-    });
+    final isLoading = ref.watch(authLoadingProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Complete Your Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).signOut();
-            },
-          )
-        ],
+        automaticallyImplyLeading: false, // Don't show back button
+         actions: [ // Optional: Add a logout button here in case user gets stuck
+           IconButton(
+             icon: const Icon(Icons.logout),
+             onPressed: () => ref.read(authNotifierProvider.notifier).signOut(),
+             tooltip: 'Log Out',
+           )
+         ],
       ),
       body: SafeArea(
         child: Padding(
@@ -78,39 +110,59 @@ class _CompleteProfileScreenState extends ConsumerState<CompleteProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Icon(Icons.person_pin_outlined, size: 80, color: Colors.grey),
+                  const SizedBox(height: 24),
                   Text(
                     'Just one last step!',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   Text(
                     'Please confirm your details to continue.',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.grey[600],
+                        ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 32),
+                  // Full Name Field
                   TextField(
                     controller: _fullNameController,
-                    decoration: const InputDecoration(labelText: 'Full Name*', prefixIcon: Icon(Icons.person_outline)),
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name*',
+                      prefixIcon: Icon(Icons.person_outline)
+                      ),
+                    textInputAction: TextInputAction.next,
+                    enabled: !isLoading,
                   ),
                   const SizedBox(height: 16),
+                  // Contact No Field
                   TextField(
-                    controller: _contactController,
-                    decoration: const InputDecoration(labelText: 'Contact No (Optional)', prefixIcon: Icon(Icons.phone_outlined)),
+                    controller: _contactNoController,
+                    decoration: const InputDecoration(
+                      labelText: 'Contact No (Optional)',
+                       prefixIcon: Icon(Icons.phone_outlined)
+                       ),
                     keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.done,
+                    enabled: !isLoading,
+                    onSubmitted: (_) {
+                      if (!isLoading) _saveProfile();
+                    },
                   ),
-                  // You could add more fields here like 'gender', 'location' etc.
                   const SizedBox(height: 32),
+                  // Save Button
                   ElevatedButton(
-                    onPressed: isLoading ? null : _updateProfile,
+                    onPressed: isLoading ? null : _saveProfile,
                     child: isLoading
                         ? const SizedBox(
                             height: 24,
                             width: 24,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 3),
                           )
                         : const Text('Save & Continue'),
                   ),
