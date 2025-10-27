@@ -1,0 +1,60 @@
+name: homiego
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+version: 1.0.0+1
+
+environment:
+  # common, safe Dart SDK range
+  sdk: '>=3.4.0 <4.0.0'
+
+# Dependencies specify other packages that your package needs in order to work.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Your existing icon package
+  cupertino_icons: ^1.0.8
+
+  # --- PACKAGES ADDED FOR HOMIEGO ---
+  supabase_flutter: ^2.5.8   # For Supabase
+  flutter_riverpod: ^2.5.1   # For State Management
+  flutter_dotenv: ^5.1.0     # For securing API keys
+  google_fonts: ^6.2.1       # For your app's theme
+  # --- END OF ADDED PACKAGES ---
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # Your existing lints package
+  flutter_lints: ^5.0.0
+
+# The following section is specific to Flutter packages.
+flutter:
+
+  # The following line ensures that the Material Icons font is
+  # included with your application, so that you can use the icons in
+  # the material Icons class.
+  uses-material-design: true
+
+  # --- ADD THIS ASSETS SECTION ---
+  # This allows your app to read the .env file
+  assets:
+    - .env
+  # --- END OF ASSETS SECTION ---
+
+  # To add custom fonts to your application, add a fonts section here,
+  # in this "flutter" section. Each entry in this list should have a
+  # "family" key with the font family name, and a "fonts" key with a
+  # list giving the asset and other descriptors for the font.
+  # fonts:
+  #   - family: Schyler
+  #     fonts:
+  #       - asset: fonts/Schyler-Regular.ttf
+  #       - asset: fonts/Schyler-Italic.ttf
+  #         style: italic
+
