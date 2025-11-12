@@ -11,4 +11,3 @@ class TenantHomeScreen extends StatelessWidget {
     );
   }
 }
-
