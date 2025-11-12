@@ -1,5 +1,7 @@
 enum BookingStatus { pending, confirmed, declined, cancelled }
 enum PaymentStatus { unpaid, paid, refunded }
+enum UserRole { tenant, homeowner, admin }
+enum PropertyStatus { pending, approved, rejected }
 
 class Booking {
   final int id;
