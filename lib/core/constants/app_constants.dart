@@ -90,5 +90,44 @@ class AppConstants {
 
   /// Number of recently added properties to show
   static const int recentlyAddedCount = 10;
+
+  // --- Cancellation Policy ---
+
+  /// Cancellation policy for Homiego platform
+  static const String cancellationPolicy = '''
+1. Tenant Cancellations
+
+Full Refund:
+Tenants can cancel their booking within 24 hours of confirmation to receive a full refund, excluding service fees.
+
+No Refund:
+After 24 hours from booking confirmation, the payment becomes non-refundable.
+
+Early Checkout:
+If a tenant decides to leave before the checkout date, the remaining nights will not be refunded.
+
+2. Homeowner Cancellations
+
+Homeowners must honor all confirmed bookings.
+
+If a homeowner cancels:
+The tenant will receive a full refund.
+The homeowner's account may face temporary suspension or reduced listing visibility for reliability reasons.
+
+3. No-Show Policy
+
+If a tenant fails to check in within 24 hours of the scheduled check-in time and does not contact the host or Homiego Support, the booking will be treated as a no-show with no refund.
+
+4. Exceptional Circumstances
+
+Full refunds may be granted only for verified cases such as:
+• Natural disasters or severe weather affecting the property
+• Government restrictions or emergencies
+• Property safety or habitability issues confirmed by Homiego
+
+5. Refund Process
+
+Approved refunds will be processed within 7–14 business days via the original payment method.
+''';
 }
 
