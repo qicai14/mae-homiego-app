@@ -11,7 +11,6 @@ class Booking {
   final double totalPrice;
   final BookingStatus status;
   final PaymentStatus paymentStatus;
-  final String cancellationPolicy;
   final DateTime createdAt;
 
   Booking({
@@ -22,7 +21,6 @@ class Booking {
     required this.totalPrice,
     required this.status,
     required this.paymentStatus,
-    required this.cancellationPolicy,
     required this.createdAt,
   });
 
@@ -41,7 +39,6 @@ class Booking {
         (e) => e.name == map['payment_status'],
         orElse: () => PaymentStatus.unpaid,
       ),
-      cancellationPolicy: map['cancellation_policy'] ?? '',
       createdAt: DateTime.parse(map['created_at']),
     );
   }
@@ -55,7 +52,6 @@ class Booking {
       'total_price': totalPrice,
       'status': status.name,
       'payment_status': paymentStatus.name,
-      'cancellation_policy': cancellationPolicy,
       'created_at': createdAt.toIso8601String(),
     };
   }
