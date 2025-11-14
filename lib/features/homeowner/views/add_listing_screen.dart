@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/constants/app_constants.dart';
 import 'package:homiego/core/models/property.dart';
 import 'package:homiego/core/services/supabase_client.dart';
-import 'dashboard_screen.dart' show homeownerProfileProvider;
+import 'package:homiego/features/homeowner/providers/booking_providers.dart'
+    show homeownerProfileProvider;
 import 'package:homiego/core/utils/show_snackbar.dart';
 
 class AddListingScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _addressController = TextEditingController();
 
   String? _propertyType;
-  Set<String> _selectedAmenities = {};
+  final Set<String> _selectedAmenities = {};
   bool _loading = false;
 
   @override
@@ -93,7 +94,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(labelText: 'Title *'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+                enabled: !_loading,
               ),
               const SizedBox(height: 18),
               TextFormField(
@@ -101,7 +104,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 decoration: const InputDecoration(labelText: 'Description *'),
                 minLines: 2,
                 maxLines: 5,
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+                enabled: !_loading,
               ),
               const SizedBox(height: 18),
               DropdownButtonFormField<String>(
@@ -112,7 +117,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                           child: Text(type),
                         ))
                     .toList(),
-                onChanged: (val) => setState(() => _propertyType = val),
+                onChanged:
+                    _loading ? null : (val) => setState(() => _propertyType = val),
                 decoration: const InputDecoration(labelText: 'Property Type *'),
                 validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
@@ -122,9 +128,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _priceController,
-                      decoration: const InputDecoration(labelText: 'Price per Night (MYR) *'),
+                      decoration: const InputDecoration(
+                          labelText: 'Price per Night (MYR) *'),
                       keyboardType: TextInputType.number,
-                      validator: (v) => v == null || v.trim().isEmpty || double.tryParse(v) == null ? 'Enter valid number' : null,
+                      validator: (v) => v == null ||
+                              v.trim().isEmpty ||
+                              double.tryParse(v) == null
+                          ? 'Enter valid number'
+                          : null,
+                      enabled: !_loading,
                     ),
                   ),
                   const SizedBox(width: 18),
@@ -133,7 +145,13 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                       controller: _maxGuestsController,
                       decoration: const InputDecoration(labelText: 'Max Guests *'),
                       keyboardType: TextInputType.number,
-                      validator: (v) => v == null || v.trim().isEmpty || int.tryParse(v) == null || int.parse(v) < 1 ? 'Enter valid number' : null,
+                      validator: (v) => v == null ||
+                              v.trim().isEmpty ||
+                              int.tryParse(v) == null ||
+                              int.parse(v) < 1
+                          ? 'Enter valid number'
+                          : null,
+                      enabled: !_loading,
                     ),
                   ),
                 ],
@@ -142,10 +160,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               TextFormField(
                 controller: _addressController,
                 decoration: const InputDecoration(labelText: 'Address *'),
-                validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                validator: (v) =>
+                    v == null || v.trim().isEmpty ? 'Required' : null,
+                enabled: !_loading,
               ),
               const SizedBox(height: 24),
-              Text('Amenities', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+              Text('Amenities',
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
@@ -155,15 +177,17 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     avatar: Icon(entry.value, size: 18),
                     label: Text(entry.key),
                     selected: _selectedAmenities.contains(entry.key),
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _selectedAmenities.add(entry.key);
-                        } else {
-                          _selectedAmenities.remove(entry.key);
-                        }
-                      });
-                    },
+                    onSelected: _loading
+                        ? null
+                        : (selected) {
+                            setState(() {
+                              if (selected) {
+                                _selectedAmenities.add(entry.key);
+                              } else {
+                                _selectedAmenities.remove(entry.key);
+                              }
+                            });
+                          },
                   );
                 }).toList(),
               ),
@@ -176,7 +200,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                       ? const SizedBox(
                           width: 28,
                           height: 28,
-                          child: CircularProgressIndicator(strokeWidth: 3, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 3, color: Colors.white),
                         )
                       : const Text('Submit Listing'),
                 ),

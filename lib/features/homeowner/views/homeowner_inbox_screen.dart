@@ -2,85 +2,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
-import 'package:homiego/core/providers/auth_providers.dart';
+import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
-/// Provider to fetch current authenticated profile (only emits Profile when non-null)
-final homeownerProfileProvider = Provider<Profile>((ref) {
-  final authState = ref.watch(authNotifierProvider);
-  return authState.maybeWhen(
-    data: (data) => data.profile!,
-    orElse: () => throw Exception('Profile not found'),
-  );
-});
-
-/// StreamProvider for all bookings for homeowner's properties
-/// Uses a StreamController to manually manage the stream with complex queries
-final homeownerBookingsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) async* {
-  final profile = ref.watch(homeownerProfileProvider);
-  
-  // First, get all property IDs owned by this homeowner
-  final propertyRows = await supabase
-      .from('properties')
-      .select('id')
-      .eq('host_id', profile.id);
-  
-  final propertyIds = (propertyRows as List<dynamic>).map((e) => e['id'] as int).toList();
-  
-  if (propertyIds.isEmpty) {
-    yield [];
-    return;
-  }
-  
-  // Initial fetch
-  final initialRows = await supabase
-      .from('bookings')
-      .select('*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url)')
-      .inFilter('property_id', propertyIds)
-      .order('created_at', ascending: false);
-  
-  // Set up a stream that listens to booking changes via Supabase Realtime
-  // For now, we'll use a periodic refresh approach since complex joins don't work well with .stream()
-  final controller = StreamController<List<Map<String, dynamic>>>();
-  
-  // Seed the controller with initial data immediately
-  controller.add(List<Map<String, dynamic>>.from(initialRows));
-  
-  // Listen to booking changes for these properties
-  final subscription = supabase
-      .from('bookings')
-      .stream(primaryKey: ['id'])
-      .inFilter('property_id', propertyIds)
-      .listen((data) async {
-        // When bookings change, refetch with joins
-        try {
-          final refreshedRows = await supabase
-              .from('bookings')
-              .select('*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url)')
-              .inFilter('property_id', propertyIds)
-              .order('created_at', ascending: false);
-          controller.add(List<Map<String, dynamic>>.from(refreshedRows));
-        } catch (e) {
-          controller.addError(e);
-        }
-      });
-  
-  ref.onDispose(() {
-    subscription.cancel();
-    controller.close();
-  });
-  
-  yield* controller.stream;
-});
 
 class HomeownerInboxScreen extends ConsumerWidget {
   const HomeownerInboxScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final bookingsAsync = ref.watch(homeownerBookingsProvider);
+    // --- USE THE NEW PROVIDER ---
+    final bookingsAsync = ref.watch(pendingBookingsProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -106,7 +40,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(36.0),
                 child: Text(
-                  'No bookings yet.',
+                  // Updated text since this screen now only shows pending
+                  'No pending bookings.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.grey[700],
                   ),
@@ -125,16 +60,15 @@ class HomeownerInboxScreen extends ConsumerWidget {
               final property = booking['properties'] as Map<String, dynamic>? ?? {};
               final tenantProfile = booking['profiles'] as Map<String, dynamic>? ?? {};
               
+              // This will now always be 'pending' based on the provider
               final bookingStatus = booking['status'] as String? ?? 'pending';
-              final isPending = bookingStatus == 'pending';
+              final isPending = bookingStatus == 'pending'; 
+              
               final tenantName = tenantProfile['full_name'] as String? ?? 'Unknown';
               final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
               final propertyTitle = property['title'] as String? ?? 'Unknown Property';
               final checkInDate = booking['check_in_date'] as String? ?? '';
               final totalPrice = (booking['total_price'] as num?)?.toDouble() ?? 0.0;
-              
-              // Calculate number of nights (simplified - you might want to use check_out_date if available)
-              // For now, we'll just show the check-in date
               
               return Card(
                 elevation: 2,
@@ -210,6 +144,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
+                              // _getStatusColor will now always show orange
                               color: _getStatusColor(bookingStatus).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -223,6 +158,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
+                      // This will now always be true, but it's fine
                       if (isPending) ...[
                         const SizedBox(height: 12),
                         Row(
@@ -254,6 +190,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
     );
   }
 
+  // --- No changes to helper methods below ---
+
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
@@ -270,6 +208,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
   }
 
   Future<void> _handleAccept(BuildContext context, WidgetRef ref, int bookingId) async {
+    // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
       title: 'Accept Booking',
@@ -284,6 +223,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
               .eq('id', bookingId);
 
           if (context.mounted) {
+            // Use show_snackbar.dart
             showSnackBar(context, 'Booking accepted successfully!');
             // StreamProvider will automatically refresh via Realtime subscription
           }
@@ -297,6 +237,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
   }
 
   Future<void> _handleDecline(BuildContext context, WidgetRef ref, int bookingId) async {
+    // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
       title: 'Decline Booking',
@@ -311,6 +252,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
               .eq('id', bookingId);
 
           if (context.mounted) {
+            // Use show_snackbar.dart
             showSnackBar(context, 'Booking declined.');
             // StreamProvider will automatically refresh via Realtime subscription
           }

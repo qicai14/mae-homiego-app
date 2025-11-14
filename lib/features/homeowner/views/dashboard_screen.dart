@@ -4,21 +4,13 @@ import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/models/property.dart' as property_model;
 import 'package:homiego/core/models/booking.dart' as booking_model;
 import 'package:homiego/core/models/review.dart';
-import 'package:homiego/core/providers/auth_providers.dart';
+// --- IMPORT THE NEW PROVIDER ---
+import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 
 /// --- PROVIDERS ---
 
-/// Provider to fetch current authenticated profile (only emits Profile when non-null)
-final homeownerProfileProvider = Provider<Profile>((ref) {
-  final authState = ref.watch(authNotifierProvider);
-  return authState.maybeWhen(
-    data: (data) => data.profile!,
-    orElse: () => throw Exception('Profile not found'),
-  );
-});
-
-/// Property count by status for this homeowner
+/// Property count by status for this homeowner (No changes)
 final propertyCountProvider = FutureProvider.family<int, property_model.PropertyStatus>((ref, status) async {
   final profile = ref.watch(homeownerProfileProvider);
   final data = await supabase
@@ -27,25 +19,6 @@ final propertyCountProvider = FutureProvider.family<int, property_model.Property
       .eq('host_id', profile.id)
       .eq('status', status.name);
   return (data as List).length;
-});
-
-/// Pending booking requests for homeowner's properties (limit 3)
-final pendingBookingRequestsProvider = FutureProvider<List<booking_model.Booking>>((ref) async {
-  final profile = ref.watch(homeownerProfileProvider);
-  final propertyRows = await supabase
-      .from('properties')
-      .select('id')
-      .eq('host_id', profile.id);
-  final propertyIds = (propertyRows as List<dynamic>).map((e) => e['id'] as int).toList();
-  if (propertyIds.isEmpty) return [];
-  final rows = await supabase
-      .from('bookings')
-      .select()
-      .inFilter('property_id', propertyIds)
-      .eq('status', 'pending')
-      .order('created_at', ascending: false)
-      .limit(3);
-  return (rows as List<dynamic>).map((map) => booking_model.Booking.fromMap(map)).toList();
 });
 
 /// Latest reviews for homeowner's properties (limit 3)
@@ -57,14 +30,18 @@ final latestReviewsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) a
       .eq('host_id', profile.id);
   final propertyIds = (propertyRows as List<dynamic>).map((e) => e['id'] as int).toList();
   if (propertyIds.isEmpty) return [];
-  // Join reviews + bookings + tenant profile
+
+  // --- BUG FIX HERE: Correct nested join syntax ---
   final reviewRows = await supabase
       .from('reviews')
-      .select('*,bookings:booking_id(tenant_id),profiles:bookings.tenant_id(full_name,avatar_url)') 
-      .inFilter('bookings.property_id', propertyIds)
+      .select(
+          '*, bookings:booking_id(tenant_id, property_id, profiles:tenant_id(full_name, avatar_url))')
+      .inFilter('bookings.property_id', propertyIds) // Filter on the joined table
       .order('created_at', ascending: false)
       .limit(3);
-  return List<Map<String, dynamic>>.from(reviewRows ?? []);
+  
+  // --- WARNING FIX HERE: Removed redundant '?? []' ---
+  return List<Map<String, dynamic>>.from(reviewRows);
 });
 
 // --- DASHBOARD WIDGET ---
@@ -77,7 +54,10 @@ class HomeownerDashboardScreen extends ConsumerWidget {
     final profile = ref.watch(homeownerProfileProvider);
     final pendingCount = ref.watch(propertyCountProvider(property_model.PropertyStatus.pending));
     final approvedCount = ref.watch(propertyCountProvider(property_model.PropertyStatus.approved));
-    final bookingsAsync = ref.watch(pendingBookingRequestsProvider);
+    
+    // --- USE THE NEW PROVIDER ---
+    final bookingsAsync = ref.watch(pendingBookingsProvider);
+    
     final reviewsAsync = ref.watch(latestReviewsProvider);
     final theme = Theme.of(context);
 
@@ -118,15 +98,20 @@ class HomeownerDashboardScreen extends ConsumerWidget {
               bookingsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => _PlaceholderBox('Failed to load requests.'),
-                data: (bookings) => bookings.isEmpty
+                data: (bookings) {
+                  // --- APPLY .take(3) LIMIT HERE ---
+                  final limitedBookings = bookings.take(3).toList();
+                  
+                  return limitedBookings.isEmpty
                     ? _PlaceholderBox('No pending requests.')
                     : ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: bookings.length,
+                        itemCount: limitedBookings.length, // Use limited count
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (context, idx) => _BookingRequestCard(booking: bookings[idx]),
-                      ),
+                        itemBuilder: (context, idx) => _BookingRequestCard(bookingMap: limitedBookings[idx]), // Pass map
+                      );
+                },
               ),
               const SizedBox(height: 28),
               // Latest Review Section
@@ -134,7 +119,7 @@ class HomeownerDashboardScreen extends ConsumerWidget {
               const SizedBox(height: 10),
               reviewsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => _PlaceholderBox('Failed to load reviews.'),
+                error: (e, _) => _PlaceholderBox('Failed to load reviews.'), // This error should now be gone
                 data: (reviews) => reviews.isEmpty
                     ? _PlaceholderBox('No reviews yet.')
                     : SizedBox(
@@ -190,13 +175,19 @@ class _StatusCard extends StatelessWidget {
   }
 }
 
-class _BookingRequestCard extends StatelessWidget {
-  final booking_model.Booking booking;
-  const _BookingRequestCard({required this.booking});
+class _BookingRequestCard extends ConsumerWidget {
+  final Map<String, dynamic> bookingMap;
+  const _BookingRequestCard({required this.bookingMap});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    // NOTE: In a real app, you'd join with property, tenant profile for more info
+    
+    // Parse the map data
+    final tenantProfile = bookingMap['profiles'] as Map<String, dynamic>? ?? {};
+    final tenantName = tenantProfile['full_name'] as String? ?? 'Unknown';
+    final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -204,20 +195,30 @@ class _BookingRequestCard extends StatelessWidget {
         padding: const EdgeInsets.all(14.0),
         child: Row(
           children: [
-            CircleAvatar(radius: 26, child: Icon(Icons.person)), // Placeholder, replace w/ tenant avatar
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: Colors.grey[300],
+              backgroundImage: tenantAvatarUrl != null
+                  ? NetworkImage(tenantAvatarUrl)
+                  : null,
+              child: tenantAvatarUrl == null
+                  ? const Icon(Icons.person, color: Colors.grey)
+                  : null,
+            ),
             const SizedBox(width: 15),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Request From:', style: theme.textTheme.labelMedium?.copyWith(color: Colors.grey[700])),
-                  Text('John Doe', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)), // TODO fetch tenant name!
+                  Text(tenantName, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
+                      // TODO: Implement Accept/Decline logic
                       OutlinedButton(onPressed: () {}, child: const Text('Accept')),
                       const SizedBox(width: 8),
-                      OutlinedButton(onPressed: () {}, child: const Text('Decline')), // TODO
+                      OutlinedButton(onPressed: () {}, child: const Text('Decline')),
                     ],
                   ),
                 ],
@@ -303,4 +304,3 @@ class _PlaceholderBox extends StatelessWidget {
     );
   }
 }
-
