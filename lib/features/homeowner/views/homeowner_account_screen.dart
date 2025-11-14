@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/providers/auth_providers.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
+import 'package:homiego/features/homeowner/views/edit_homeowner_profile_screen.dart'; // <-- 1. IMPORT NEW SCREEN
 
 class HomeownerAccountScreen extends ConsumerWidget {
   const HomeownerAccountScreen({super.key});
@@ -79,7 +80,13 @@ class HomeownerAccountScreen extends ConsumerWidget {
                           label: 'Name',
                           value: profile.fullName ?? 'Not set',
                           onEdit: () {
-                            showSnackBar(context, 'Edit Profile feature coming soon!');
+                            // --- 2. UPDATE NAVIGATION ---
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditHomeownerProfileScreen(),
+                              ),
+                            );
                           },
                         ),
                         const Divider(height: 32),
@@ -87,8 +94,14 @@ class HomeownerAccountScreen extends ConsumerWidget {
                         _ProfileInfoRow(
                           label: 'Contact No',
                           value: profile.contactNo ?? 'Not set',
-                          onEdit: () {
-                            showSnackBar(context, 'Edit Profile feature coming soon!');
+                           onEdit: () {
+                            // --- 2. UPDATE NAVIGATION ---
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditHomeownerProfileScreen(),
+                              ),
+                            );
                           },
                         ),
                         const Divider(height: 32),
@@ -96,8 +109,14 @@ class HomeownerAccountScreen extends ConsumerWidget {
                         _ProfileInfoRow(
                           label: 'Gender',
                           value: profile.gender ?? 'Not set',
-                          onEdit: () {
-                            showSnackBar(context, 'Edit Profile feature coming soon!');
+                           onEdit: () {
+                            // --- 2. UPDATE NAVIGATION ---
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const EditHomeownerProfileScreen(),
+                              ),
+                            );
                           },
                         ),
                       ],
