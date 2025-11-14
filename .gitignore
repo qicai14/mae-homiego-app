@@ -46,3 +46,5 @@ app.*.map.json
 
 # SUPABASE
 .env
+/.cursor/rules
+/.design

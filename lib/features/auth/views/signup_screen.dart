@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart'; // Ensure correct path
 import 'package:homiego/core/providers/auth_providers.dart'; // Import notifier provider
-// import 'package:homiego/core/services/supabase_client.dart'; // No longer needed here
 import 'package:homiego/core/utils/show_snackbar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // For AuthResponse, User, AuthException
 

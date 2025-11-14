@@ -148,7 +148,7 @@ class AuthNotifier extends AsyncNotifier<AppAuthState> {
       // Listener will update the state automatically on success
       debugPrint("AuthNotifier: Sign in successful (state update pending listener)");
     } catch (e) {
-       debugPrint("AuthNotifier: Sign in failed: $e");
+        debugPrint("AuthNotifier: Sign in failed: $e");
       // Rethrow the error so the UI can catch it and show a message
       rethrow;
     }
