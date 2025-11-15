@@ -1,5 +1,6 @@
 import 'package:homiego/core/models/property.dart';
 import 'dart:async';
+import 'package:flutter/foundation.dart'; // <-- FIX IS HERE
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/providers/auth_providers.dart';
@@ -105,9 +106,15 @@ final myListingsProvider = FutureProvider<List<Property>>((ref) async {
   // --- THIS NOW WORKS: It watches the correct, centralized provider ---
   final profile = ref.watch(homeownerProfileProvider);
 
+  // --- ADD THIS LINE ---
+  debugPrint('[myListingsProvider] Fetching listings for host_id: ${profile.id}');
+
   // Query Supabase for properties owned by this homeowner
   final rows =
       await supabase.from('properties').select().eq('host_id', profile.id);
+
+  // --- ADD THIS LINE ---
+  debugPrint('[myListingsProvider] Rows received from Supabase: $rows');
 
   // Parse the data into List<Property>
   return (rows as List<dynamic>).map((e) => Property.fromMap(e)).toList();
