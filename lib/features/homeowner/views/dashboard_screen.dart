@@ -4,25 +4,12 @@ import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/models/property.dart' as property_model;
 // --- IMPORT THE CENTRALIZED PROVIDER ---
 import 'package:homiego/features/homeowner/providers/booking_providers.dart';
+// --- IMPORT THE NEW DASHBOARD PROVIDERS ---
+import 'package:homiego/features/homeowner/providers/dashboard_providers.dart';
 // --- IMPORT THE SUPABASE CLIENT GETTER ---
 import 'package:homiego/core/services/supabase_client.dart';
 
-/// --- PROVIDERS ---
-
-/// Property count by status for this homeowner (No changes)
-final propertyCountProvider =
-    FutureProvider.family<int, property_model.PropertyStatus>((ref, status) async {
-  final profile = ref.watch(homeownerProfileProvider);
-  // --- FIX: Use the global 'supabase' getter ---
-  final data = await supabase
-      .from('properties')
-      .select('id')
-      .eq('host_id', profile.id)
-      .eq('status', status.name);
-  return (data as List).length;
-});
-
-// --- REMOVED local latestReviewsProvider ---
+// --- ALL LOCAL PROVIDERS HAVE BEEN REMOVED ---
 
 // --- DASHBOARD WIDGET ---
 
@@ -32,13 +19,15 @@ class HomeownerDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(homeownerProfileProvider);
-    final pendingCount =
-        ref.watch(propertyCountProvider(property_model.PropertyStatus.pending));
-    final approvedCount =
-        ref.watch(propertyCountProvider(property_model.PropertyStatus.approved));
 
-    // --- USE THE NEW CENTRALIZED PROVIDER ---
-    final bookingsAsync = ref.watch(pendingBookingsProvider);
+    // --- USE THE NEW EFFICIENT COUNT PROVIDER ---
+    final pendingCount = ref
+        .watch(dashboardPropertyCountProvider(property_model.PropertyStatus.pending));
+    final approvedCount = ref
+        .watch(dashboardPropertyCountProvider(property_model.PropertyStatus.approved));
+
+    // --- USE THE NEW DERIVED PENDING BOOKINGS PROVIDER ---
+    final bookingsAsync = ref.watch(dashboardPendingBookingsProvider);
 
     final theme = Theme.of(context);
 
@@ -121,7 +110,7 @@ class HomeownerDashboardScreen extends ConsumerWidget {
   }
 }
 
-// --- Helper Card Widgets ---
+// --- Helper Card Widgets (No Changes) ---
 
 class _StatusCard extends StatelessWidget {
   final String title;

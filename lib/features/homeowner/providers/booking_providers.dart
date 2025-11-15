@@ -21,16 +21,17 @@ final homeownerProfileProvider = Provider<Profile>((ref) {
   );
 });
 
-/// --- NEW: Single StreamProvider for Pending Bookings ---
+/// --- REFACTORED: StreamProvider for ALL Homeowner Bookings ---
 ///
-/// Fetches and listens to all bookings for the current homeowner's properties
-/// where the status is 'pending'.
+/// Fetches and listens to *all* bookings (pending, confirmed, etc.)
+/// for the current homeowner's properties.
+/// This is the "source of truth" stream for bookings.
 ///
 /// Returns a `List<Map<String, dynamic>>` containing joined data from:
 /// - bookings (*)
 /// - properties (title)
 /// - profiles (tenant's full_name, avatar_url)
-final pendingBookingsProvider =
+final homeownerBookingsStreamProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) async* {
   final profile = ref.watch(homeownerProfileProvider);
   final hostId = profile.id;
@@ -52,14 +53,15 @@ final pendingBookingsProvider =
   final controller = StreamController<List<Map<String, dynamic>>>();
 
   // 4. Define the function to fetch joined data
-  Future<void> fetchPendingBookings() async {
+  Future<void> fetchBookings() async {
     try {
       final data = await supabase
           .from('bookings')
           .select(
               '*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url)')
           .inFilter('property_id', propertyIds)
-          .eq('status', 'pending') // Filter for pending status
+          // --- FILTER REMOVED ---
+          // .eq('status', 'pending') // <-- This filter was removed
           .order('created_at', ascending: false);
 
       if (!controller.isClosed) {
@@ -73,17 +75,16 @@ final pendingBookingsProvider =
   }
 
   // 5. Fetch initial data
-  await fetchPendingBookings();
+  await fetchBookings();
 
   // 6. Set up Realtime listener
   // Listen to *any* change on bookings related to our properties.
-  // This will re-fetch the list, automatically adding new 'pending'
-  // bookings and removing ones that are 'confirmed' or 'declined'.
+  // This will re-fetch the list, automatically updating all listeners.
   final subscription = supabase
       .from('bookings')
       .stream(primaryKey: ['id'])
       .inFilter('property_id', propertyIds)
-      .listen((_) => fetchPendingBookings());
+      .listen((_) => fetchBookings());
 
   // 7. Clean up controller and subscription on dispose
   ref.onDispose(() {

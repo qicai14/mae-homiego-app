@@ -6,16 +6,15 @@ import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
-// --- REMOVED local homeownerProfileProvider ---
-// --- REMOVED local homeownerBookingsProvider ---
+// --- ALL LOCAL PROVIDERS HAVE BEEN REMOVED ---
 
 class HomeownerInboxScreen extends ConsumerWidget {
   const HomeownerInboxScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // --- USE THE NEW CENTRALIZED PROVIDER ---
-    final bookingsAsync = ref.watch(pendingBookingsProvider);
+    // --- USE THE NEW, REFACTORED STREAM PROVIDER ---
+    final bookingsAsync = ref.watch(homeownerBookingsStreamProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -41,8 +40,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(36.0),
                 child: Text(
-                  // Updated text since this screen now only shows pending
-                  'No pending bookings.',
+                  // Updated text as this now correctly checks ALL bookings
+                  'You have no booking requests yet.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.grey[700],
                   ),
@@ -63,7 +62,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
               final tenantProfile =
                   booking['profiles'] as Map<String, dynamic>? ?? {};
 
-              // This will now always be 'pending' based on the provider
+              // This logic now correctly handles different statuses
               final bookingStatus = booking['status'] as String? ?? 'pending';
               final isPending = bookingStatus == 'pending';
 
@@ -152,7 +151,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              // _getStatusColor will now always show orange
                               color:
                                   _getStatusColor(bookingStatus).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -167,7 +165,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      // This will now always be true, but it's fine
+                      // This will now correctly show *only* for pending items
                       if (isPending) ...[
                         const SizedBox(height: 12),
                         Row(
