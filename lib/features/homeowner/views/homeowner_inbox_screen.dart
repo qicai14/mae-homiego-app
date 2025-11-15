@@ -1,19 +1,20 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:homiego/core/models/profile.dart';
+// --- IMPORT THE CENTRALIZED PROVIDER ---
 import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
+// --- REMOVED local homeownerProfileProvider ---
+// --- REMOVED local homeownerBookingsProvider ---
 
 class HomeownerInboxScreen extends ConsumerWidget {
   const HomeownerInboxScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // --- USE THE NEW PROVIDER ---
+    // --- USE THE NEW CENTRALIZED PROVIDER ---
     final bookingsAsync = ref.watch(pendingBookingsProvider);
     final theme = Theme.of(context);
 
@@ -57,19 +58,24 @@ class HomeownerInboxScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final booking = bookings[index];
-              final property = booking['properties'] as Map<String, dynamic>? ?? {};
-              final tenantProfile = booking['profiles'] as Map<String, dynamic>? ?? {};
-              
+              final property =
+                  booking['properties'] as Map<String, dynamic>? ?? {};
+              final tenantProfile =
+                  booking['profiles'] as Map<String, dynamic>? ?? {};
+
               // This will now always be 'pending' based on the provider
               final bookingStatus = booking['status'] as String? ?? 'pending';
-              final isPending = bookingStatus == 'pending'; 
-              
-              final tenantName = tenantProfile['full_name'] as String? ?? 'Unknown';
+              final isPending = bookingStatus == 'pending';
+
+              final tenantName =
+                  tenantProfile['full_name'] as String? ?? 'Unknown';
               final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
-              final propertyTitle = property['title'] as String? ?? 'Unknown Property';
+              final propertyTitle =
+                  property['title'] as String? ?? 'Unknown Property';
               final checkInDate = booking['check_in_date'] as String? ?? '';
-              final totalPrice = (booking['total_price'] as num?)?.toDouble() ?? 0.0;
-              
+              final totalPrice =
+                  (booking['total_price'] as num?)?.toDouble() ?? 0.0;
+
               return Card(
                 elevation: 2,
                 shape: RoundedRectangleBorder(
@@ -120,7 +126,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
                       const SizedBox(height: 12),
                       Row(
                         children: [
-                          Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
+                          Icon(Icons.calendar_today,
+                              size: 16, color: Colors.grey[600]),
                           const SizedBox(width: 4),
                           Text(
                             'Check-in: $checkInDate',
@@ -142,10 +149,12 @@ class HomeownerInboxScreen extends ConsumerWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               // _getStatusColor will now always show orange
-                              color: _getStatusColor(bookingStatus).withOpacity(0.1),
+                              color:
+                                  _getStatusColor(bookingStatus).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -165,14 +174,16 @@ class HomeownerInboxScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => _handleDecline(context, ref, booking['id'] as int),
+                                onPressed: () => _handleDecline(
+                                    context, ref, booking['id'] as int),
                                 child: const Text('Decline'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () => _handleAccept(context, ref, booking['id'] as int),
+                                onPressed: () => _handleAccept(
+                                    context, ref, booking['id'] as int),
                                 child: const Text('Accept'),
                               ),
                             ),
@@ -207,7 +218,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _handleAccept(BuildContext context, WidgetRef ref, int bookingId) async {
+  Future<void> _handleAccept(
+      BuildContext context, WidgetRef ref, int bookingId) async {
     // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
@@ -225,18 +237,20 @@ class HomeownerInboxScreen extends ConsumerWidget {
           if (context.mounted) {
             // Use show_snackbar.dart
             showSnackBar(context, 'Booking accepted successfully!');
-            // StreamProvider will automatically refresh via Realtime subscription
+            // The StreamProvider will automatically refetch the list
           }
         } catch (e) {
           if (context.mounted) {
-            showSnackBar(context, 'Failed to accept booking: $e', isError: true);
+            showSnackBar(context, 'Failed to accept booking: $e',
+                isError: true);
           }
         }
       },
     );
   }
 
-  Future<void> _handleDecline(BuildContext context, WidgetRef ref, int bookingId) async {
+  Future<void> _handleDecline(
+      BuildContext context, WidgetRef ref, int bookingId) async {
     // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
@@ -254,11 +268,12 @@ class HomeownerInboxScreen extends ConsumerWidget {
           if (context.mounted) {
             // Use show_snackbar.dart
             showSnackBar(context, 'Booking declined.');
-            // StreamProvider will automatically refresh via Realtime subscription
+            // The StreamProvider will automatically refetch the list
           }
         } catch (e) {
           if (context.mounted) {
-            showSnackBar(context, 'Failed to decline booking: $e', isError: true);
+            showSnackBar(context, 'Failed to decline booking: $e',
+                isError: true);
           }
         }
       },
