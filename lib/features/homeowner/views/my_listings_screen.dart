@@ -1,41 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:homiego/core/models/profile.dart';
+
 import 'package:homiego/core/models/property.dart';
-// --- REMOVED: This line was causing the bug ---
-// import 'package:homiego/core/providers/auth_providers.dart'; 
-// --- END REMOVED ---
-import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/widgets/property_box.dart';
 import 'add_listing_screen.dart';
-
-// --- ADDED: Import the correct, centralized provider ---
 import 'package:homiego/features/homeowner/providers/booking_providers.dart'
-    show homeownerProfileProvider;
-// --- END ADDED ---
+    show homeownerProfileProvider, myListingsProvider;
+// --- END CHANGES ---
 
-// --- REMOVED: This buggy, local provider definition was the root cause ---
-// final homeownerProfileProvider = Provider<Profile>((ref) {
-//   final authState = ref.watch(authNotifierProvider);
-//   return authState.maybeWhen(
-//     data: (data) => data.profile!,
-//     orElse: () => throw Exception('Profile not found'),
-//   );
-// });
-// --- END REMOVED ---
 
-/// --- Riverpod FutureProvider for all properties owned by current homeowner ---
-final myListingsProvider = FutureProvider<List<Property>>((ref) async {
-  // --- THIS NOW WORKS: It watches the correct, centralized provider ---
-  final profile = ref.watch(homeownerProfileProvider);
-
-  // Query Supabase for properties owned by this homeowner
-  final rows =
-      await supabase.from('properties').select().eq('host_id', profile.id);
-
-  // Parse the data into List<Property>
-  return (rows as List<dynamic>).map((e) => Property.fromMap(e)).toList();
-});
+// --- CHANGES ---
+// REMOVED the entire myListingsProvider definition from this file.
+// It now lives in 'booking_providers.dart'.
+// --- END CHANGES ---
 
 class MyListingsScreen extends ConsumerWidget {
   const MyListingsScreen({super.key});

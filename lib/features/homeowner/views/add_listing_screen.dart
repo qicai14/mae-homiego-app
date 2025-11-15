@@ -3,8 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/constants/app_constants.dart';
 import 'package:homiego/core/models/property.dart';
 import 'package:homiego/core/services/supabase_client.dart';
+
+// --- CHANGES ---
+// ADDED import for the main auth provider
+import 'package:homiego/core/providers/auth_providers.dart'; 
+// UPDATED import to include myListingsProvider for invalidation
 import 'package:homiego/features/homeowner/providers/booking_providers.dart'
-    show homeownerProfileProvider;
+    show myListingsProvider;
+// --- END CHANGES ---
+
 import 'package:homiego/core/utils/show_snackbar.dart';
 
 class AddListingScreen extends ConsumerStatefulWidget {
@@ -38,6 +45,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     super.dispose();
   }
 
+  // --- CHANGES ---
+  // This function is now architecturally sound and safe.
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     if (_propertyType == null) {
@@ -45,12 +54,24 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       return;
     }
     setState(() => _loading = true);
+
     try {
-      final profile = ref.read(homeownerProfileProvider);
+      // 1. SAFELY get profile from the auth notifier's current state
+      final authState = ref.read(authNotifierProvider);
+      final profile = authState.valueOrNull?.profile;
+
+      // 2. Guard against a null profile
+      if (profile == null) {
+        throw Exception(
+            'User profile is not available. Please try logging out and back in.');
+      }
+
       final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
       final maxGuest = int.tryParse(_maxGuestsController.text.trim()) ?? 1;
+      
+      // 3. The 'host_id' is now guaranteed to be correct
       final newProp = {
-        'host_id': profile.id,
+        'host_id': profile.id, 
         'created_at': DateTime.now().toIso8601String(),
         'title': _titleController.text.trim(),
         'description': _descriptionController.text.trim(),
@@ -63,18 +84,27 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         'verified': false,
         'cleaning_fee': 0.0,
         'service_fee': 0.0,
-        // latitude/longitude left blank for now
       };
-      await supabase.from('properties').insert(newProp).select().single();
+
+      await supabase.from('properties').insert(newProp);
+      
       if (!context.mounted) return;
+
+      // 4. Invalidate the provider to force MyListingsScreen to refresh
+      ref.invalidate(myListingsProvider);
+
       showSnackBar(context, 'Listing submitted for review!', isError: false);
       Navigator.pop(context);
+
     } catch (e) {
-      if (context.mounted) showSnackBar(context, 'Failed: $e', isError: true);
+      if (context.mounted) {
+        showSnackBar(context, 'Failed to submit listing: $e', isError: true);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
+  // --- END CHANGES ---
 
   @override
   Widget build(BuildContext context) {
