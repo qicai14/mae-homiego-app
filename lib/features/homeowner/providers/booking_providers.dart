@@ -58,6 +58,7 @@ final homeownerBookingsStreamProvider =
       final data = await supabase
           .from('bookings')
           .select(
+              // --- THIS IS THE CORRECT JOIN ---
               '*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url)')
           .inFilter('property_id', propertyIds)
           // --- FILTER REMOVED ---

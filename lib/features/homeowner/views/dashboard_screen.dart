@@ -8,8 +8,8 @@ import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/features/homeowner/providers/dashboard_providers.dart';
 // --- IMPORT THE SUPABASE CLIENT GETTER ---
 import 'package:homiego/core/services/supabase_client.dart';
-
-// --- ALL LOCAL PROVIDERS HAVE BEEN REMOVED ---
+// --- ADDED: Import for navigation provider ---
+import 'package:homiego/features/homeowner/views/homeowner_main_screen.dart';
 
 // --- DASHBOARD WIDGET ---
 
@@ -21,10 +21,10 @@ class HomeownerDashboardScreen extends ConsumerWidget {
     final profile = ref.watch(homeownerProfileProvider);
 
     // --- USE THE NEW EFFICIENT COUNT PROVIDER ---
-    final pendingCount = ref
-        .watch(dashboardPropertyCountProvider(property_model.PropertyStatus.pending));
-    final approvedCount = ref
-        .watch(dashboardPropertyCountProvider(property_model.PropertyStatus.approved));
+    final pendingCount = ref.watch(
+        dashboardPropertyCountProvider(property_model.PropertyStatus.pending));
+    final approvedCount = ref.watch(
+        dashboardPropertyCountProvider(property_model.PropertyStatus.approved));
 
     // --- USE THE NEW DERIVED PENDING BOOKINGS PROVIDER ---
     final bookingsAsync = ref.watch(dashboardPendingBookingsProvider);
@@ -59,8 +59,8 @@ class HomeownerDashboardScreen extends ConsumerWidget {
                   _StatusCard(
                     title: 'Active Property Listing',
                     icon: Icons.lock_open,
-                    count:
-                        approvedCount.maybeWhen(data: (c) => c, orElse: () => 0),
+                    count: approvedCount.maybeWhen(
+                        data: (c) => c, orElse: () => 0),
                   ),
                 ],
               ),
@@ -110,7 +110,7 @@ class HomeownerDashboardScreen extends ConsumerWidget {
   }
 }
 
-// --- Helper Card Widgets (No Changes) ---
+// --- Helper Card Widgets (StatusCard unchanged) ---
 
 class _StatusCard extends StatelessWidget {
   final String title;
@@ -158,10 +158,12 @@ class _BookingRequestCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
+    // --- THIS PARSING LOGIC IS CORRECT ---
     // Parse the map data
     final tenantProfile = bookingMap['profiles'] as Map<String, dynamic>? ?? {};
     final tenantName = tenantProfile['full_name'] as String? ?? 'Unknown';
     final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
+    // --- END CORRECT PARSING ---
 
     return Card(
       elevation: 2,
@@ -187,20 +189,29 @@ class _BookingRequestCard extends ConsumerWidget {
                   Text('Request From:',
                       style: theme.textTheme.labelMedium
                           ?.copyWith(color: Colors.grey[700])),
-                  Text(tenantName,
+                  Text(tenantName, // <-- This will now display the name
                       style: theme.textTheme.bodyLarge
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
+                  // --- CHANGED: Replaced buttons ---
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      // TODO: Implement Accept/Decline logic
-                      OutlinedButton(
-                          onPressed: () {}, child: const Text('Accept')),
-                      const SizedBox(width: 8),
-                      OutlinedButton(
-                          onPressed: () {}, child: const Text('Decline')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 10),
+                          textStyle: theme.textTheme.labelMedium,
+                        ),
+                        onPressed: () {
+                          // Navigate to Inbox (index 2)
+                          ref.read(homeownerNavIndexProvider.notifier).state = 2;
+                        },
+                        child: const Text('View Details'),
+                      ),
                     ],
                   ),
+                  // --- END CHANGED ---
                 ],
               ),
             ),

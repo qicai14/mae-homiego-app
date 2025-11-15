@@ -6,7 +6,8 @@ import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
-// --- ALL LOCAL PROVIDERS HAVE BEEN REMOVED ---
+// --- ADDED: Provider to track which booking is currently being updated ---
+final _updatingBookingProvider = StateProvider<int?>((ref) => null);
 
 class HomeownerInboxScreen extends ConsumerWidget {
   const HomeownerInboxScreen({super.key});
@@ -15,6 +16,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // --- USE THE NEW, REFACTORED STREAM PROVIDER ---
     final bookingsAsync = ref.watch(homeownerBookingsStreamProvider);
+    // --- ADDED: Watch the loading state ---
+    final updatingBookingId = ref.watch(_updatingBookingProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -40,7 +43,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
               child: Padding(
                 padding: const EdgeInsets.all(36.0),
                 child: Text(
-                  // Updated text as this now correctly checks ALL bookings
                   'You have no booking requests yet.',
                   style: theme.textTheme.bodyLarge?.copyWith(
                     color: Colors.grey[700],
@@ -62,9 +64,10 @@ class HomeownerInboxScreen extends ConsumerWidget {
               final tenantProfile =
                   booking['profiles'] as Map<String, dynamic>? ?? {};
 
-              // This logic now correctly handles different statuses
               final bookingStatus = booking['status'] as String? ?? 'pending';
               final isPending = bookingStatus == 'pending';
+              // --- ADDED: Check if this specific card is loading ---
+              final bool isThisLoading = updatingBookingId == (booking['id'] as int);
 
               final tenantName =
                   tenantProfile['full_name'] as String? ?? 'Unknown';
@@ -147,41 +150,55 @@ class HomeownerInboxScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color:
-                                  _getStatusColor(bookingStatus).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              bookingStatus.toUpperCase(),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: _getStatusColor(bookingStatus),
-                                fontWeight: FontWeight.bold,
+                          // --- ADDED: Show loading indicator or status ---
+                          if (isThisLoading)
+                            const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          else
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getStatusColor(bookingStatus)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                bookingStatus.toUpperCase(),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: _getStatusColor(bookingStatus),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
+                          // --- END ADDED ---
                         ],
                       ),
-                      // This will now correctly show *only* for pending items
                       if (isPending) ...[
                         const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                onPressed: () => _handleDecline(
-                                    context, ref, booking['id'] as int),
+                                // --- CHANGED: Disable button when loading ---
+                                onPressed: isThisLoading
+                                    ? null
+                                    : () => _handleDecline(
+                                        context, ref, booking['id'] as int),
                                 child: const Text('Decline'),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton(
-                                onPressed: () => _handleAccept(
-                                    context, ref, booking['id'] as int),
+                                // --- CHANGED: Disable button when loading ---
+                                onPressed: isThisLoading
+                                    ? null
+                                    : () => _handleAccept(
+                                        context, ref, booking['id'] as int),
                                 child: const Text('Accept'),
                               ),
                             ),
@@ -198,8 +215,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
       ),
     );
   }
-
-  // --- No changes to helper methods below ---
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -218,7 +233,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
 
   Future<void> _handleAccept(
       BuildContext context, WidgetRef ref, int bookingId) async {
-    // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
       title: 'Accept Booking',
@@ -226,6 +240,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button1Text: 'Cancel',
       button2Text: 'Accept',
       button2Callback: () async {
+        // --- CHANGED: Set loading state and add finally block ---
+        ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
           await supabase
               .from('bookings')
@@ -233,23 +249,28 @@ class HomeownerInboxScreen extends ConsumerWidget {
               .eq('id', bookingId);
 
           if (context.mounted) {
-            // Use show_snackbar.dart
+            // --- ADDED: Manually invalidate the stream to force refresh ---
+            ref.invalidate(homeownerBookingsStreamProvider);
             showSnackBar(context, 'Booking accepted successfully!');
-            // The StreamProvider will automatically refetch the list
           }
         } catch (e) {
           if (context.mounted) {
             showSnackBar(context, 'Failed to accept booking: $e',
                 isError: true);
           }
+        } finally {
+          // --- ADDED: Clear loading state ---
+          if (context.mounted) {
+            ref.read(_updatingBookingProvider.notifier).state = null;
+          }
         }
+        // --- END CHANGED ---
       },
     );
   }
 
   Future<void> _handleDecline(
       BuildContext context, WidgetRef ref, int bookingId) async {
-    // Use confirmation_dialog.dart
     showConfirmationDialog(
       context: context,
       title: 'Decline Booking',
@@ -257,6 +278,8 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button1Text: 'Cancel',
       button2Text: 'Decline',
       button2Callback: () async {
+        // --- CHANGED: Set loading state and add finally block ---
+        ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
           await supabase
               .from('bookings')
@@ -264,16 +287,22 @@ class HomeownerInboxScreen extends ConsumerWidget {
               .eq('id', bookingId);
 
           if (context.mounted) {
-            // Use show_snackbar.dart
+            // --- ADDED: Manually invalidate the stream to force refresh ---
+            ref.invalidate(homeownerBookingsStreamProvider);
             showSnackBar(context, 'Booking declined.');
-            // The StreamProvider will automatically refetch the list
           }
         } catch (e) {
           if (context.mounted) {
             showSnackBar(context, 'Failed to decline booking: $e',
                 isError: true);
           }
+        } finally {
+          // --- ADDED: Clear loading state ---
+          if (context.mounted) {
+            ref.read(_updatingBookingProvider.notifier).state = null;
+          }
         }
+        // --- END CHANGED ---
       },
     );
   }

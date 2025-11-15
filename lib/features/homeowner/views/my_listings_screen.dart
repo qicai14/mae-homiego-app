@@ -2,30 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/models/property.dart';
-import 'package:homiego/core/providers/auth_providers.dart';
+// --- REMOVED: This line was causing the bug ---
+// import 'package:homiego/core/providers/auth_providers.dart'; 
+// --- END REMOVED ---
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/widgets/property_box.dart';
 import 'add_listing_screen.dart';
 
-/// Provider to fetch current authenticated profile (only emits Profile when non-null)
-final homeownerProfileProvider = Provider<Profile>((ref) {
-  final authState = ref.watch(authNotifierProvider);
-  return authState.maybeWhen(
-    data: (data) => data.profile!,
-    orElse: () => throw Exception('Profile not found'),
-  );
-});
+// --- ADDED: Import the correct, centralized provider ---
+import 'package:homiego/features/homeowner/providers/booking_providers.dart'
+    show homeownerProfileProvider;
+// --- END ADDED ---
+
+// --- REMOVED: This buggy, local provider definition was the root cause ---
+// final homeownerProfileProvider = Provider<Profile>((ref) {
+//   final authState = ref.watch(authNotifierProvider);
+//   return authState.maybeWhen(
+//     data: (data) => data.profile!,
+//     orElse: () => throw Exception('Profile not found'),
+//   );
+// });
+// --- END REMOVED ---
 
 /// --- Riverpod FutureProvider for all properties owned by current homeowner ---
 final myListingsProvider = FutureProvider<List<Property>>((ref) async {
+  // --- THIS NOW WORKS: It watches the correct, centralized provider ---
   final profile = ref.watch(homeownerProfileProvider);
-  
+
   // Query Supabase for properties owned by this homeowner
-  final rows = await supabase
-      .from('properties')
-      .select()
-      .eq('host_id', profile.id);
-  
+  final rows =
+      await supabase.from('properties').select().eq('host_id', profile.id);
+
   // Parse the data into List<Property>
   return (rows as List<dynamic>).map((e) => Property.fromMap(e)).toList();
 });
@@ -35,8 +42,10 @@ class MyListingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // This 'watch' is now safe and will use the new RLS policy
     final listingsAsync = ref.watch(myListingsProvider);
     final theme = Theme.of(context);
+    
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -49,8 +58,11 @@ class MyListingsScreen extends ConsumerWidget {
         error: (error, _) => Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text('Failed to load your listings. Please try again later.',
-                style: theme.textTheme.bodyLarge?.copyWith(color: Colors.red)),
+            child: Text(
+              'Failed to load your listings. Please try again later.\n\nError: $error', // Added error for debugging
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.red),
+            ),
           ),
         ),
         data: (list) {
@@ -106,4 +118,3 @@ class MyListingsScreen extends ConsumerWidget {
     );
   }
 }
-
