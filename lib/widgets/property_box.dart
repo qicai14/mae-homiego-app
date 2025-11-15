@@ -28,21 +28,38 @@ class PropertyBox extends StatelessWidget {
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
-        child: Column(
+        child: Column( // This is the Column from the error log
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top: Image - takes as much space as possible
-            Expanded(
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Center(child: Icon(Icons.image_not_supported)),
-              ),
+            // --- THIS IS THE FIX ---
+            // We replace the flexible 'Expanded' with a fixed-ratio 'AspectRatio'.
+            // This gives the Column a finite height to provide to its children.
+            AspectRatio(
+              aspectRatio: 16 / 9, // Common ratio for property images
+              child: (imageUrl.isEmpty || !imageUrl.startsWith('http'))
+                  // If imageUrl is empty or invalid, show placeholder immediately
+                  ? Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                          child: Icon(Icons.image_not_supported,
+                              color: Colors.grey)),
+                    )
+                  // Otherwise, attempt to load the network image
+                  : Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                            child: Icon(Icons.image_not_supported,
+                                color: Colors.grey)),
+                      ),
+                    ),
             ),
+            // --- END OF FIX ---
 
-            // Bottom: Details - takes minimal space
+            // Bottom: Details - this part was already fine
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -64,16 +81,23 @@ class PropertyBox extends StatelessWidget {
                       Icon(
                         Icons.location_on,
                         size: 12,
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.6),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           location,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                fontSize: 10,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6),
+                                    fontSize: 10,
+                                  ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -89,17 +113,22 @@ class PropertyBox extends StatelessWidget {
                           const SizedBox(width: 4),
                           Text(
                             '$rating',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 10,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
                           ),
                           Text(
                             ' ($reviewCount)',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                  fontSize: 10,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.6),
+                                      fontSize: 10,
+                                    ),
                           ),
                         ],
                       ),
@@ -107,18 +136,23 @@ class PropertyBox extends StatelessWidget {
                         children: [
                           Text(
                             'RM $price',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
                           ),
                           Text(
                             '/night',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w300,
-                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                                  fontSize: 10,
-                                ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w300,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface
+                                          .withOpacity(0.6),
+                                      fontSize: 10,
+                                    ),
                           ),
                         ],
                       ),
