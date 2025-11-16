@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/property.dart';
 import 'package:homiego/core/models/profile.dart';
+import 'package:homiego/core/models/fraud_detection.dart';
 import 'package:homiego/core/services/supabase_client.dart';
+import 'package:homiego/features/admin/services/fraud_detection_service.dart';
 
 // Rental Statistics Model
 class RentalStatistics {
-  final int inactiveProperties; // No bookings
-  final int activeProperties; // Has bookings
+  final int inactiveProperties; // Pending or Rejected
+  final int activeProperties; // Approved
 
   RentalStatistics({
     required this.inactiveProperties,
@@ -14,39 +16,53 @@ class RentalStatistics {
   });
 }
 
+// Booking Statistics Model
+class BookingStatistics {
+  final int totalBookings;
+  final int pendingBookings;
+  final int confirmedBookings;
+  final int declinedBookings;
+  final int cancelledBookings;
+  final double totalRevenue;
+  final int paidBookings;
+  final int unpaidBookings;
+
+  BookingStatistics({
+    required this.totalBookings,
+    required this.pendingBookings,
+    required this.confirmedBookings,
+    required this.declinedBookings,
+    required this.cancelledBookings,
+    required this.totalRevenue,
+    required this.paidBookings,
+    required this.unpaidBookings,
+  });
+}
+
 // Provider for rental statistics
 final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
   try {
-    // Fetch all properties
+    // Fetch all properties with their status
     final propertiesResponse = await supabase
         .from('properties')
-        .select('id');
+        .select('status');
 
     final propertyList = propertiesResponse as List? ?? [];
     if (propertyList.isEmpty) {
       return RentalStatistics(inactiveProperties: 0, activeProperties: 0);
     }
 
-    final propertyIds = propertyList
-        .map((p) => p['id'] as int)
-        .toList();
+    int activeCount = 0;
+    int inactiveCount = 0;
 
-    // Fetch all bookings to determine which properties are active
-    final bookingsResponse = await supabase
-        .from('bookings')
-        .select('property_id');
-
-    final bookingsList = bookingsResponse as List? ?? [];
-    final propertiesWithBookings = <int>{};
-    for (var booking in bookingsList) {
-      final propertyId = booking['property_id'] as int?;
-      if (propertyId != null) {
-        propertiesWithBookings.add(propertyId);
+    for (var property in propertyList) {
+      final status = property['status'] as String?;
+      if (status == 'approved') {
+        activeCount++;
+      } else if (status == 'pending' || status == 'rejected') {
+        inactiveCount++;
       }
     }
-
-    final activeCount = propertiesWithBookings.length;
-    final inactiveCount = propertyIds.length - activeCount;
 
     return RentalStatistics(
       inactiveProperties: inactiveCount,
@@ -54,6 +70,81 @@ final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
     );
   } catch (e) {
     throw Exception('Failed to fetch rental statistics: $e');
+  }
+});
+
+
+// Provider for booking statistics
+final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async {
+  try {
+    // DEBUG: Check session
+    final session = supabase.auth.currentSession;
+    print("=== BOOKING STATS SESSION TOKEN (first 20 chars) ===");
+    print(session?.accessToken.substring(0, 20) ?? "NO SESSION FOUND");
+
+    // DEBUG: Check user ID
+    print("CURRENT USER ID: ${supabase.auth.currentUser?.id}");
+
+    // Perform the query
+    final bookingsResponse = await supabase
+        .from('bookings')
+        .select('status, payment_status, total_price');
+
+    print("BOOKINGS RESPONSE RAW: $bookingsResponse");
+
+    final bookingsList = bookingsResponse as List? ?? [];
+    print("BOOKINGS COUNT FROM SUPABASE: ${bookingsList.length}");
+
+    // The rest of your logic remains unchanged
+    int totalBookings = bookingsList.length;
+    int pendingCount = 0;
+    int confirmedCount = 0;
+    int declinedCount = 0;
+    int cancelledCount = 0;
+    int paidCount = 0;
+    int unpaidCount = 0;
+    double totalRevenue = 0.0;
+
+    for (var booking in bookingsList) {
+      final status = booking['status'] as String?;
+      final paymentStatus = booking['payment_status'] as String?;
+      final price = booking['total_price'] as num?;
+
+      switch (status) {
+        case 'pending':
+          pendingCount++;
+          break;
+        case 'confirmed':
+          confirmedCount++;
+          break;
+        case 'declined':
+          declinedCount++;
+          break;
+        case 'cancelled':
+          cancelledCount++;
+          break;
+      }
+
+      if (paymentStatus == 'paid') {
+        paidCount++;
+        totalRevenue += price?.toDouble() ?? 0.0;
+      } else if (paymentStatus == 'unpaid') {
+        unpaidCount++;
+      }
+    }
+
+    return BookingStatistics(
+      totalBookings: totalBookings,
+      pendingBookings: pendingCount,
+      confirmedBookings: confirmedCount,
+      declinedBookings: declinedCount,
+      cancelledBookings: cancelledCount,
+      totalRevenue: totalRevenue,
+      paidBookings: paidCount,
+      unpaidBookings: unpaidCount,
+    );
+  } catch (e) {
+    throw Exception('Failed to fetch booking statistics: $e');
   }
 });
 
@@ -231,6 +322,68 @@ final updateProfileVerificationProvider =
     print('Error updating profile verification: $e');
     print('Stack trace: $stackTrace');
     throw Exception('Failed to update profile verification: $e');
+  }
+});
+
+// Provider for system fraud summary
+final systemFraudSummaryProvider = FutureProvider<SystemFraudSummary>((ref) async {
+  try {
+    return await FraudDetectionService.getSystemFraudSummary();
+  } catch (e) {
+    throw Exception('Failed to fetch fraud summary: $e');
+  }
+});
+
+// Provider for user fraud scores
+final userFraudScoresProvider = FutureProvider<List<UserFraudScore>>((ref) async {
+  try {
+    return await FraudDetectionService.analyzeAllUsers();
+  } catch (e) {
+    throw Exception('Failed to fetch user fraud scores: $e');
+  }
+});
+
+// Provider for property fraud scores
+final propertyFraudScoresProvider = FutureProvider<List<PropertyFraudScore>>((ref) async {
+  try {
+    return await FraudDetectionService.analyzeAllProperties();
+  } catch (e) {
+    throw Exception('Failed to fetch property fraud scores: $e');
+  }
+});
+
+// Provider for all properties (excluding admin properties)
+final allPropertiesProvider = FutureProvider<List<Property>>((ref) async {
+  try {
+    final response = await supabase
+        .from('properties')
+        .select()
+        .order('created_at', ascending: false);
+
+    final responseList = response as List? ?? [];
+    return responseList
+        .map((data) => Property.fromMap(data as Map<String, dynamic>))
+        .toList();
+  } catch (e) {
+    throw Exception('Failed to fetch all properties: $e');
+  }
+});
+
+// Provider for all profiles (excluding admin)
+final allProfilesProvider = FutureProvider<List<Profile>>((ref) async {
+  try {
+    final response = await supabase
+        .from('profiles')
+        .select()
+        .neq('role', 'admin')
+        .order('created_at', ascending: false);
+
+    final responseList = response as List? ?? [];
+    return responseList
+        .map((data) => Profile.fromMap(data as Map<String, dynamic>))
+        .toList();
+  } catch (e) {
+    throw Exception('Failed to fetch all profiles: $e');
   }
 });
 

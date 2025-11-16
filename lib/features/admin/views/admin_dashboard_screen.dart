@@ -4,6 +4,7 @@ import 'package:homiego/core/providers/auth_providers.dart';
 import 'package:homiego/features/admin/providers/admin_providers.dart';
 import 'package:homiego/features/admin/views/manage_listing_screen.dart';
 import 'package:homiego/features/admin/views/manage_user_screen.dart';
+import 'package:homiego/features/admin/views/fraud_detection_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -20,7 +21,47 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     const _DashboardTab(),
     const ManageListingScreen(),
     const ManageUserScreen(),
+    const FraudDetectionScreen(),
   ];
+
+  void changeTab(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
+  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.logout, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Confirm Logout'),
+          ],
+        ),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(authNotifierProvider.notifier).signOut();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,9 +71,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              ref.read(authNotifierProvider.notifier).signOut();
-            },
+            tooltip: 'Logout',
+            onPressed: () => _showLogoutConfirmation(context, ref),
           )
         ],
       ),
@@ -57,7 +97,12 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             icon: Icon(Icons.people),
             label: 'Manage User',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.shield),
+            label: 'Fraud Detection',
+          ),
         ],
+        type: BottomNavigationBarType.fixed,
       ),
     );
   }
@@ -118,6 +163,26 @@ class _DashboardTab extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           const _AnalyticsDashboard(),
+          const SizedBox(height: 32),
+          const Text(
+            'Bookings Analytics',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const _BookingsAnalyticsDashboard(),
+          const SizedBox(height: 32),
+          const Text(
+            'Fraud Detection',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          const _FraudDetectionSummary(),
         ],
       ),
     );
@@ -163,7 +228,7 @@ class _StatisticsCards extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'No bookings yet',
+                    'Pending or Rejected',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.blue[600],
@@ -206,7 +271,7 @@ class _StatisticsCards extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Has bookings',
+                    'Approved',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.green[600],
@@ -450,6 +515,382 @@ class _ProgressBar extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+class _BookingsAnalyticsDashboard extends ConsumerWidget {
+  const _BookingsAnalyticsDashboard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Fetch booking analytics data
+    final bookingStatsAsync = ref.watch(bookingStatisticsProvider);
+
+    return bookingStatsAsync.when(
+      data: (stats) {
+        final confirmedPercentage = stats.totalBookings > 0
+            ? (stats.confirmedBookings / stats.totalBookings * 100)
+            : 0.0;
+
+        return Column(
+          children: [
+            // Booking Status Cards
+            Row(
+              children: [
+                Expanded(
+                  child: _BookingStatusCard(
+                    icon: Icons.hourglass_bottom,
+                    label: 'Pending',
+                    count: stats.pendingBookings,
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _BookingStatusCard(
+                    icon: Icons.check_circle,
+                    label: 'Confirmed',
+                    count: stats.confirmedBookings,
+                    color: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _BookingStatusCard(
+                    icon: Icons.cancel,
+                    label: 'Declined',
+                    count: stats.declinedBookings,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Booking Details Card
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.event_note, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text(
+                          'Booking Performance',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _AnalyticsRow(
+                      label: 'Total Bookings',
+                      value: stats.totalBookings.toString(),
+                      icon: Icons.event_note,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(height: 16),
+                    _AnalyticsRow(
+                      label: 'Total Revenue',
+                      value: '\$${stats.totalRevenue.toStringAsFixed(2)}',
+                      icon: Icons.attach_money,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(height: 16),
+                    _AnalyticsRow(
+                      label: 'Confirmation Rate',
+                      value: '${confirmedPercentage.toStringAsFixed(1)}%',
+                      icon: Icons.trending_up,
+                      color: Colors.teal,
+                    ),
+                    const SizedBox(height: 16),
+                    _AnalyticsRow(
+                      label: 'Paid Bookings',
+                      value: '${stats.paidBookings}',
+                      icon: Icons.payment,
+                      color: Colors.purple,
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    _ProgressBar(
+                      label: 'Booking Status Distribution',
+                      active: stats.confirmedBookings,
+                      total: stats.totalBookings,
+                      activeColor: Colors.green,
+                      inactiveColor: Colors.orange,
+                    ),
+                    const SizedBox(height: 24),
+                    _ProgressBar(
+                      label: 'Payment Collection',
+                      active: stats.paidBookings,
+                      total: stats.totalBookings,
+                      activeColor: Colors.purple,
+                      inactiveColor: Colors.grey,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, stack) => Card(
+        color: Colors.red[50],
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 48),
+              const SizedBox(height: 8),
+              Text(
+                'Error loading bookings analytics',
+                style: TextStyle(color: Colors.red[700]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookingStatusCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+
+  const _BookingStatusCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[700],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FraudDetectionSummary extends ConsumerWidget {
+  const _FraudDetectionSummary();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fraudSummaryAsync = ref.watch(systemFraudSummaryProvider);
+
+    return fraudSummaryAsync.when(
+      data: (summary) {
+        Color getScoreColor(double score) {
+          if (score >= 70) return Colors.red;
+          if (score >= 40) return Colors.orange;
+          return Colors.green;
+        }
+
+        return Card(
+          elevation: 2,
+          child: InkWell(
+            onTap: () {
+              // Navigate to fraud detection screen
+              final adminState = context.findAncestorStateOfType<_AdminDashboardScreenState>();
+              if (adminState != null && adminState.mounted) {
+                adminState.changeTab(3); // Fraud Detection tab index
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.shield, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text(
+                            'Fraud Detection Overview',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: Colors.grey[600],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _FraudStatItem(
+                          label: 'Risk Score',
+                          value: '${summary.overallScore.toStringAsFixed(1)}%',
+                          color: getScoreColor(summary.overallScore),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _FraudStatItem(
+                          label: 'Flagged Users',
+                          value: '${summary.flaggedUsers}',
+                          color: Colors.orange,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _FraudStatItem(
+                          label: 'Flagged Properties',
+                          value: '${summary.flaggedProperties}',
+                          color: Colors.purple,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (summary.overallScore > 0) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: getScoreColor(summary.overallScore).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: getScoreColor(summary.overallScore).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: getScoreColor(summary.overallScore),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Tap to view detailed fraud analysis',
+                              style: TextStyle(
+                                color: getScoreColor(summary.overallScore),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () => const Card(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, stack) => Card(
+        color: Colors.red[50],
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                'Error loading fraud data',
+                style: TextStyle(color: Colors.red[700], fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FraudStatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _FraudStatItem({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[700],
+          ),
+          textAlign: TextAlign.center,
         ),
       ],
     );
