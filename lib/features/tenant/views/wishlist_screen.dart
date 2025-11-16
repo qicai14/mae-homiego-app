@@ -51,10 +51,10 @@ class _TenantWishlistScreenState extends ConsumerState<TenantWishlistScreen> wit
         return;
       }
 
-      // Fetch wishlist items with properties using a join
+      // Step 1: Fetch wishlist IDs only (avoid recursive queries)
       final wishlistResponse = await supabase
           .from('wishlists')
-          .select('property_id, properties(*)')
+          .select('property_id')
           .eq('tenant_id', user.id);
 
       final wishlistData = wishlistResponse as List;
@@ -67,23 +67,39 @@ class _TenantWishlistScreenState extends ConsumerState<TenantWishlistScreen> wit
         return;
       }
 
-      // Extract properties from the joined response
-      final properties = <Property>[];
-      for (final item in wishlistData) {
-        try {
-          final propertyData = item['properties'];
-          if (propertyData != null && propertyData is Map) {
-            final property = Property.fromMap(Map<String, dynamic>.from(propertyData));
-            // Only include approved properties
-            if (property.status == PropertyStatus.approved) {
-              properties.add(property);
-            }
-          }
-        } catch (e) {
-          // Skip properties that fail to parse
-          print('Error parsing property from wishlist: $e');
-        }
+      // Extract property IDs
+      final propertyIds = wishlistData
+          .map((item) => item['property_id'] as int)
+          .whereType<int>()
+          .toList();
+
+      if (propertyIds.isEmpty) {
+        setState(() {
+          _wishlistProperties = [];
+          _isLoading = false;
+        });
+        return;
       }
+
+      // Step 2: Fetch properties separately using the IDs
+      // This avoids recursive foreign key traversal that causes stack overflow
+      final propertiesResponse = await supabase
+          .from('properties')
+          .select()
+          .inFilter('id', propertyIds)
+          .eq('status', PropertyStatus.approved.name);
+
+      final properties = (propertiesResponse as List)
+          .map((json) {
+            try {
+              return Property.fromMap(json);
+            } catch (e) {
+              print('Error parsing property from wishlist: $e');
+              return null;
+            }
+          })
+          .whereType<Property>()
+          .toList();
 
       if (mounted) {
         setState(() {
@@ -142,28 +158,19 @@ class _TenantWishlistScreenState extends ConsumerState<TenantWishlistScreen> wit
                     )
                   : RefreshIndicator(
                       onRefresh: _loadWishlist,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final gridConfig = _calculateGridConfig(constraints.maxWidth);
-                          
-                          return GridView.builder(
-                            padding: const EdgeInsets.all(16),
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: gridConfig.crossAxisCount,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              childAspectRatio: gridConfig.childAspectRatio,
-                            ),
-                            itemCount: _wishlistProperties!.length,
-                            itemBuilder: (context, index) {
-                              return SizedBox(
-                                width: gridConfig.boxWidth,
-                                child: _PropertyCard(
-                                  property: _wishlistProperties![index],
-                                  onWishlistChanged: refreshWishlist,
-                                ),
-                              );
-                            },
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(16),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                          childAspectRatio: 0.75, // Fixed aspect ratio for property boxes
+                        ),
+                        itemCount: _wishlistProperties!.length,
+                        itemBuilder: (context, index) {
+                          return _PropertyCard(
+                            property: _wishlistProperties![index],
+                            onWishlistChanged: refreshWishlist,
                           );
                         },
                       ),
@@ -171,52 +178,6 @@ class _TenantWishlistScreenState extends ConsumerState<TenantWishlistScreen> wit
     );
   }
 
-  _GridConfig _calculateGridConfig(double availableWidth) {
-    const double minBoxWidth = 190.0;
-    const double maxBoxWidth = 250.0;
-    const double horizontalPadding = 16.0;
-    const double boxSpacing = 12.0;
-    
-    final double usableWidth = availableWidth - (horizontalPadding * 2);
-    
-    int crossAxisCount = 2;
-    double boxWidth = minBoxWidth;
-    
-    // Calculate how many boxes can fit
-    for (int i = 2; i <= 4; i++) {
-      final double calculatedWidth = (usableWidth - (boxSpacing * (i - 1))) / i;
-      
-      if (calculatedWidth >= minBoxWidth && calculatedWidth <= maxBoxWidth) {
-        crossAxisCount = i;
-        boxWidth = calculatedWidth;
-      } else if (calculatedWidth < minBoxWidth) {
-        break;
-      }
-    }
-    
-    boxWidth = boxWidth.clamp(minBoxWidth, maxBoxWidth);
-    
-    // PropertyBox height is approximately boxWidth * 1.2
-    final double childAspectRatio = boxWidth / (boxWidth * 1.2);
-    
-    return _GridConfig(
-      crossAxisCount: crossAxisCount,
-      boxWidth: boxWidth,
-      childAspectRatio: childAspectRatio,
-    );
-  }
-}
-
-class _GridConfig {
-  final int crossAxisCount;
-  final double boxWidth;
-  final double childAspectRatio;
-
-  _GridConfig({
-    required this.crossAxisCount,
-    required this.boxWidth,
-    required this.childAspectRatio,
-  });
 }
 
 /// Widget for displaying a property card with image and rating

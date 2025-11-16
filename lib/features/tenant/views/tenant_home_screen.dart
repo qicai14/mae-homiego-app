@@ -16,10 +16,6 @@ class TenantHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
-  // Default location (Kuala Lumpur) - can be updated with actual user location
-  double? userLatitude;
-  double? userLongitude;
-  
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _minPriceController = TextEditingController();
   final TextEditingController _maxPriceController = TextEditingController();
@@ -32,11 +28,6 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // TODO: Get user's actual location using geolocator or similar
-    // For now, using default location
-    userLatitude = 3.1390; // Kuala Lumpur
-    userLongitude = 101.6869;
-    
     _searchController.addListener(_onSearchChanged);
   }
 
@@ -195,15 +186,6 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
                   ref.invalidate(groupFamilyPropertiesProvider);
                   ref.invalidate(privateStayPropertiesProvider);
                   ref.invalidate(topHostPropertiesProvider);
-                  ref.invalidate(verifiedPropertiesProvider);
-                  if (userLatitude != null && userLongitude != null) {
-                    ref.invalidate(nearMePropertiesProvider(
-                      LocationParams(
-                        latitude: userLatitude!,
-                        longitude: userLongitude!,
-                      ),
-                    ));
-                  }
                 }
               },
               child: isSearching
@@ -320,63 +302,6 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
     );
   }
 
-  // Calculate responsive grid configuration for search results
-  _GridConfig _calculateGridConfig(double availableWidth) {
-    const double minBoxWidth = 190.0;
-    const double maxBoxWidth = 250.0;
-    const double horizontalPadding = 32.0; // Padding from screen edges (16 on each side)
-    const double boxSpacing = 12.0; // Space between boxes
-    
-    // Available width for boxes (subtract screen padding)
-    final double usableWidth = availableWidth - horizontalPadding;
-    
-    // Calculate how many columns can fit
-    int crossAxisCount = 2; // Start with 2 columns minimum
-    double boxWidth = minBoxWidth;
-    
-    // Try to fit more columns
-    for (int i = 3; i <= 6; i++) {
-      // Calculate box width if we show i columns
-      final double calculatedWidth = (usableWidth - (boxSpacing * (i - 1))) / i;
-      
-      if (calculatedWidth >= minBoxWidth && calculatedWidth <= maxBoxWidth) {
-        crossAxisCount = i;
-        boxWidth = calculatedWidth;
-      } else if (calculatedWidth < minBoxWidth) {
-        // Can't fit more columns, break
-        break;
-      }
-    }
-    
-    // Ensure minimum width is always maintained
-    if (boxWidth < minBoxWidth) {
-      boxWidth = minBoxWidth;
-      // Recalculate how many columns can fit with minimum width
-      crossAxisCount = ((usableWidth + boxSpacing) / (minBoxWidth + boxSpacing)).floor();
-      crossAxisCount = crossAxisCount.clamp(1, 6); // At least 1 column, max 6
-    }
-    
-    // If calculated width exceeds max, cap it
-    if (boxWidth > maxBoxWidth) {
-      boxWidth = maxBoxWidth;
-      // Recalculate how many columns fit with max width
-      crossAxisCount = ((usableWidth + boxSpacing) / (maxBoxWidth + boxSpacing)).floor();
-      crossAxisCount = crossAxisCount.clamp(2, 6); // Between 2 and 6 columns
-    }
-    
-    // Final check: ensure minimum width is maintained
-    boxWidth = boxWidth.clamp(minBoxWidth, maxBoxWidth);
-    
-    // Calculate child aspect ratio (width/height)
-    // PropertyBox height is approximately boxWidth * 1.2
-    final double childAspectRatio = boxWidth / (boxWidth * 1.2);
-    
-    return _GridConfig(
-      crossAxisCount: crossAxisCount,
-      boxWidth: boxWidth,
-      childAspectRatio: childAspectRatio,
-    );
-  }
 
   Widget _buildSearchResults() {
     final searchState = ref.watch(searchStateProvider);
@@ -406,25 +331,19 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
           );
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final gridConfig = _calculateGridConfig(constraints.maxWidth);
-            
-            return GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: gridConfig.crossAxisCount,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: gridConfig.childAspectRatio,
-              ),
-              itemCount: properties.length,
-              itemBuilder: (context, index) {
-                return SizedBox(
-                  width: gridConfig.boxWidth,
-                  child: _PropertyCard(property: properties[index]),
-                );
-              },
+        return GridView.builder(
+          padding: const EdgeInsets.all(16),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.75, // Fixed aspect ratio for property boxes
+          ),
+          itemCount: properties.length,
+          itemBuilder: (context, index) {
+            return AspectRatio(
+              aspectRatio: 0.75, // Wrapper aspect ratio to prevent UI glitching
+              child: _PropertyCard(property: properties[index]),
             );
           },
         );
@@ -458,18 +377,6 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
           provider: recentlyAddedPropertiesProvider,
         ),
 
-        // Near Me (only if location is available)
-        if (userLatitude != null && userLongitude != null)
-          _CategorySection(
-            title: 'Near Me',
-            provider: nearMePropertiesProvider(
-              LocationParams(
-                latitude: userLatitude!,
-                longitude: userLongitude!,
-              ),
-            ),
-          ),
-
         // Budget-Friendly
         _CategorySection(
           title: 'Budget-Friendly',
@@ -493,12 +400,6 @@ class _TenantHomeScreenState extends ConsumerState<TenantHomeScreen> {
           title: 'Top Host',
           provider: topHostPropertiesProvider,
         ),
-
-        // Verified Homes
-        _CategorySection(
-          title: 'Verified Homes',
-          provider: verifiedPropertiesProvider,
-        ),
       ],
     );
   }
@@ -519,82 +420,7 @@ class _CategorySection extends ConsumerStatefulWidget {
 }
 
 class _CategorySectionState extends ConsumerState<_CategorySection> {
-  PageController? _pageController;
 
-  @override
-  void dispose() {
-    _pageController?.dispose();
-    super.dispose();
-  }
-
-  // Calculate responsive box width and viewport fraction
-  _CarouselConfig _calculateCarouselConfig(double availableWidth) {
-    const double minBoxWidth = 190.0;
-    const double maxBoxWidth = 250.0;
-    const double horizontalPadding = 16.0; // Padding from screen edges
-    const double boxSpacing = 16.0; // Space between boxes
-    
-    // Available width for boxes (subtract screen padding)
-    final double usableWidth = availableWidth - (horizontalPadding * 2);
-    
-    // Ensure we can fit at least 1 box with minimum width
-    if (usableWidth < minBoxWidth) {
-      // Screen too small, but force minimum width anyway
-      return _CarouselConfig(
-        boxWidth: minBoxWidth,
-        boxesToShow: 1,
-        viewportFraction: 0.6,
-      );
-    }
-    
-    // Calculate how many boxes can fit
-    int boxesToShow = 2; // Start with 2 boxes minimum
-    double boxWidth = minBoxWidth;
-    
-    // Try to fit more boxes
-    for (int i = 3; i <= 6; i++) {
-      // Calculate box width if we show i boxes
-      final double calculatedWidth = (usableWidth - (boxSpacing * (i - 1))) / i;
-      
-      if (calculatedWidth >= minBoxWidth && calculatedWidth <= maxBoxWidth) {
-        boxesToShow = i;
-        boxWidth = calculatedWidth;
-      } else if (calculatedWidth < minBoxWidth) {
-        // Can't fit more boxes, break
-        break;
-      }
-    }
-    
-    // Ensure minimum width is always maintained
-    if (boxWidth < minBoxWidth) {
-      boxWidth = minBoxWidth;
-      // Recalculate how many boxes can fit with minimum width
-      boxesToShow = ((usableWidth + boxSpacing) / (minBoxWidth + boxSpacing)).floor();
-      boxesToShow = boxesToShow.clamp(1, 6); // At least 1 box, max 6
-    }
-    
-    // If we can fit boxes but calculated width exceeds max, cap it
-    if (boxWidth > maxBoxWidth) {
-      boxWidth = maxBoxWidth;
-      // Recalculate how many boxes fit with max width
-      boxesToShow = ((usableWidth + boxSpacing) / (maxBoxWidth + boxSpacing)).floor();
-      boxesToShow = boxesToShow.clamp(2, 6); // Between 2 and 6 boxes
-    }
-    
-    // Final check: ensure minimum width is maintained
-    boxWidth = boxWidth.clamp(minBoxWidth, maxBoxWidth);
-    
-    // Calculate viewportFraction to show the right number of boxes
-    // We want to show boxesToShow boxes, so each page should be 1/boxesToShow of the width
-    // But we add a small overlap (about 10% of a box) to show parts of adjacent boxes
-    final double viewportFraction = (1.0 / boxesToShow) * 1.1;
-    
-    return _CarouselConfig(
-      boxWidth: boxWidth,
-      boxesToShow: boxesToShow,
-      viewportFraction: viewportFraction.clamp(0.2, 0.6), // Clamp between 20% and 60%
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -619,54 +445,22 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
                     ),
               ),
             ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final config = _calculateCarouselConfig(constraints.maxWidth);
-                
-                // Calculate box height (maintain reasonable aspect ratio, but let image take most space)
-                // Use a flexible height that works well with the responsive width
-                final double boxHeight = config.boxWidth * 1.2; // Slightly taller than wide
-                
-                // Use a key based on viewportFraction to force rebuild when it changes
-                final pageViewKey = ValueKey<double>(config.viewportFraction);
-                
-                // Initialize or update PageController
-                if (_pageController == null) {
-                  _pageController = PageController(viewportFraction: config.viewportFraction);
-                } else {
-                  // If viewportFraction changed significantly, recreate controller
-                  if ((_pageController!.viewportFraction - config.viewportFraction).abs() > 0.01) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        final oldController = _pageController;
-                        _pageController = PageController(viewportFraction: config.viewportFraction);
-                        oldController?.dispose();
-                      }
-                    });
-                  }
-                }
-                
-                return SizedBox(
-                  height: boxHeight,
-                  child: PageView.builder(
-                    key: pageViewKey,
-                    controller: _pageController!,
-                    scrollDirection: Axis.horizontal,
-                    padEnds: false,
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: properties.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                        child: SizedBox(
-                          width: config.boxWidth,
-                          child: _PropertyCard(property: properties[index]),
-                        ),
-                      );
-                    },
-                  ),
-                );
-              },
+            SizedBox(
+              height: 230, // Fixed height for property boxes
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: properties.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: AspectRatio(
+                      aspectRatio: 0.75, // Fixed aspect ratio for property boxes
+                      child: _PropertyCard(property: properties[index]),
+                    ),
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 8),
           ],
@@ -678,31 +472,6 @@ class _CategorySectionState extends ConsumerState<_CategorySection> {
   }
 }
 
-// Helper class to store carousel configuration
-class _CarouselConfig {
-  final double boxWidth;
-  final int boxesToShow;
-  final double viewportFraction;
-
-  _CarouselConfig({
-    required this.boxWidth,
-    required this.boxesToShow,
-    required this.viewportFraction,
-  });
-}
-
-// Helper class to store grid configuration
-class _GridConfig {
-  final int crossAxisCount;
-  final double boxWidth;
-  final double childAspectRatio;
-
-  _GridConfig({
-    required this.crossAxisCount,
-    required this.boxWidth,
-    required this.childAspectRatio,
-  });
-}
 
 /// Widget for displaying a property card with image and rating
 class _PropertyCard extends ConsumerStatefulWidget {
@@ -756,7 +525,7 @@ class _PropertyCardState extends ConsumerState<_PropertyCard> {
   Widget build(BuildContext context) {
     return PropertyBox(
       imageUrl: imageUrl ??
-          'https://via.placeholder.com/300x200?text=No+Image',
+          'https://media.istockphoto.com/id/1147544807/vector/thumbnail-image-vector-graphic.jpg?s=612x612&w=0&k=20&c=rnCKVbdxqkjlcs3xH87-9gocETqpspHFXu5dIGB4wuM=',
       name: widget.property.title,
       location: widget.property.address,
       rating: rating,

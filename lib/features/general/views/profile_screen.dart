@@ -5,6 +5,9 @@ import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 import 'package:homiego/widgets/profile_avatar.dart';
+import 'package:homiego/features/tenant/views/activity_history_screen.dart';
+import 'package:homiego/features/tenant/views/my_bookings_screen.dart';
+import 'package:homiego/features/general/views/verify_account_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -32,7 +35,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _updateControllersFromProfile(Profile? profile) {
-    if (profile != null && !_isEditingName && !_isEditingContact && !_isEditingBio) {
+    if (profile != null &&
+        !_isEditingName &&
+        !_isEditingContact &&
+        !_isEditingBio) {
       _fullNameController.text = profile.fullName ?? '';
       _contactNoController.text = profile.contactNo ?? '';
       _shortBioController.text = profile.shortBio ?? '';
@@ -50,7 +56,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _saveField(String field, String value) async {
     final authState = ref.read(authNotifierProvider);
     final user = authState.value?.user;
-    
+
     if (user == null) {
       if (mounted) {
         showSnackBar(context, 'Error: Not logged in.', isError: true);
@@ -190,9 +196,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             Text(
               controller.text.isEmpty ? 'Not set' : controller.text,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: controller.text.isEmpty
-                        ? Colors.grey
-                        : null,
+                    color: controller.text.isEmpty ? Colors.grey : null,
                   ),
             ),
         ],
@@ -207,6 +211,48 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        actions: [
+          authStateAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (authState) {
+              final profile = authState.profile;
+              if (profile?.isVerified == true) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'VERIFIED ACCOUNT',
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.green.shade700,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.verified,
+                          color: Colors.green,
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
       body: authStateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -216,7 +262,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         data: (authState) {
           final profile = authState.profile;
           final userName = profile?.fullName ?? 'User';
-          
+
           // Update controllers when profile data changes (only if not editing)
           _updateControllersFromProfile(profile);
 
@@ -268,7 +314,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   onCancel: () {
                     final authState = ref.read(authNotifierProvider);
                     authState.whenData((state) {
-                      _contactNoController.text = state.profile?.contactNo ?? '';
+                      _contactNoController.text =
+                          state.profile?.contactNo ?? '';
                     });
                     setState(() {
                       _isEditingContact = false;
@@ -297,31 +344,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     });
                   },
                 ),
-                const SizedBox(height: 32),
-                // Logout Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSaving ? null : _handleLogout,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Theme.of(context).colorScheme.error,
-                        foregroundColor: Theme.of(context).colorScheme.onError,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                const Divider(color: Colors.grey, indent: 24, endIndent: 24),
+                // Account Settings Section (only for tenants)
+                if (profile?.role == UserRole.tenant) ...[
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Account Settings',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                     ),
                   ),
+                  // Activity History
+                  _buildAccountSettingItem(
+                    context: context,
+                    title: 'Activity History',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ActivityHistoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  // My Bookings
+                  _buildAccountSettingItem(
+                    context: context,
+                    title: 'My Bookings',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MyBookingsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  if (!(profile?.isVerified ?? true)) ...[
+                    _buildAccountSettingItem(
+                      context: context,
+                      title: 'Verify Account',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const VerifyAccountScreen(),
+                          ),
+                        ).then((_) {
+                          // Refresh profile after returning from verification screen
+                          ref.invalidate(authNotifierProvider);
+                        });
+                      },
+                    ),
+                  ],
+                ],
+                // Verify Account (only for unverified tenants)
+
+                // Logout Button
+                _buildAccountSettingItem(
+                  context: context,
+                  title: 'Logout',
+                  onTap: _isSaving ? null : _handleLogout,
+                  textColor: Theme.of(context).colorScheme.error,
                 ),
                 const SizedBox(height: 32),
               ],
@@ -331,5 +422,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
     );
   }
-}
 
+  Widget _buildAccountSettingItem({
+    required BuildContext context,
+    required String title,
+    required VoidCallback? onTap,
+    Color? textColor,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.grey[600],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

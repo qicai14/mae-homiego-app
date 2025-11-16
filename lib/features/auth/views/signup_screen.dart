@@ -107,14 +107,26 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                   Text(
+                  // Homiego Logo
+                  Image.asset(
+                    'lib/assets/HOMIEGO LOGO.png',
+                    height: 100,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.home,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  Text(
                     'Join Homiego',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 8),
                   // Email Field
                   TextField(
                     controller: _emailController,

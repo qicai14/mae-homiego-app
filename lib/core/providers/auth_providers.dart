@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart'; // for debugPrint
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart'; // Import the Profile model
 import 'package:homiego/core/services/supabase_client.dart'; // Import the supabase client getter
+import 'package:homiego/core/services/booking_service.dart'; // For booking synchronization
+import 'package:homiego/features/general/views/notification_screen.dart' as notification_screen;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // --- State Class Definition ---
@@ -67,6 +69,9 @@ class AuthNotifier extends AsyncNotifier<AppAuthState> {
       debugPrint("AuthNotifier: Initial user found (${initialUser.id}), fetching profile...");
       initialProfile = await _fetchProfile(initialUser.id);
       debugPrint("AuthNotifier: Initial profile fetched: ${initialProfile?.id}");
+      
+      // Synchronize bookings on initial load if user is already logged in
+      _synchronizeBookingsOnLogin();
     } else {
        debugPrint("AuthNotifier: No initial user.");
     }
@@ -94,27 +99,55 @@ class AuthNotifier extends AsyncNotifier<AppAuthState> {
     // Listen to Supabase's stream
     _authStateSubscription = supabase.auth.onAuthStateChange.listen(
       (data) async {
-        final Session? session = data.session;
-        final user = session?.user;
-        debugPrint("AuthNotifier: Auth state changed. New User: ${user?.id}");
+        try {
+          final Session? session = data.session;
+          final user = session?.user;
+          debugPrint("AuthNotifier: Auth state changed. New User: ${user?.id}");
 
-        if (user == null) {
-          // User logged out, update state with null user and profile
-          state = AsyncData(const AppAuthState(user: null, profile: null));
-           debugPrint("AuthNotifier: User logged out.");
-        } else {
-          // User logged in or token refreshed, fetch their profile
-          debugPrint("AuthNotifier: User logged in/refreshed (${user.id}), fetching profile...");
-          final profile = await _fetchProfile(user.id);
-          debugPrint("AuthNotifier: Profile fetched: ${profile?.id}");
-          // Update state with the new user and profile
-          state = AsyncData(AppAuthState(user: user, profile: profile));
+          if (user == null) {
+            // User logged out, update state with null user and profile
+            try {
+              state = AsyncData(const AppAuthState(user: null, profile: null));
+            } catch (e) {
+              debugPrint("AuthNotifier: Error updating state (logged out): $e");
+            }
+            debugPrint("AuthNotifier: User logged out.");
+          } else {
+            // User logged in or token refreshed, fetch their profile
+            debugPrint("AuthNotifier: User logged in/refreshed (${user.id}), fetching profile...");
+            final profile = await _fetchProfile(user.id);
+            debugPrint("AuthNotifier: Profile fetched: ${profile?.id}");
+            
+            // Update state with the new user and profile first
+            try {
+              state = AsyncData(AppAuthState(user: user, profile: profile));
+            } catch (e) {
+              debugPrint("AuthNotifier: Error updating state (logged in): $e");
+              return; // Don't continue if state update failed
+            }
+            
+            // Synchronize booking data on login (decline pending bookings past check-in)
+            // Do this after state update to avoid lifecycle issues
+            _synchronizeBookingsOnLogin();
+          }
+        } catch (e, stackTrace) {
+          debugPrint("AuthNotifier: Error in auth state change handler: $e");
+          debugPrint("AuthNotifier: Stack trace: $stackTrace");
+          try {
+            state = AsyncError(e, stackTrace);
+          } catch (_) {
+            // Provider might be disposed, ignore
+          }
         }
       },
       onError: (error) {
          debugPrint("AuthNotifier: Error in auth state stream: $error");
         // Update state with error if the stream fails
-        state = AsyncError(error, StackTrace.current);
+        try {
+          state = AsyncError(error, StackTrace.current);
+        } catch (_) {
+          // Provider might be disposed, ignore
+        }
       },
     );
   }
@@ -135,6 +168,44 @@ class AuthNotifier extends AsyncNotifier<AppAuthState> {
       debugPrint("AuthNotifier: Error fetching profile for user $userId: $e");
       return null; // Return null if profile fetch fails
     }
+  }
+
+  // --- Synchronize booking data on login ---
+  // This runs in the background and doesn't block the login process
+  void _synchronizeBookingsOnLogin() {
+    // Run asynchronously without blocking
+    Future.microtask(() async {
+      try {
+        debugPrint("AuthNotifier: Starting booking synchronization...");
+        final currentUser = supabase.auth.currentUser;
+        final updatedCount = await BookingService.synchronizeBookings();
+        if (updatedCount > 0) {
+          debugPrint("AuthNotifier: Synchronized $updatedCount booking(s) - declined/refunded pending bookings past check-in");
+          
+          // Refresh notification provider if user is logged in (notifications may have been created)
+          // Use Future.delayed to ensure we're not in the middle of a state update
+          if (currentUser != null) {
+            Future.delayed(const Duration(milliseconds: 100), () {
+              try {
+                if (ref.exists(notification_screen.notificationsProvider(currentUser.id))) {
+                  ref.invalidate(notification_screen.notificationsProvider(currentUser.id));
+                  debugPrint("AuthNotifier: Invalidated notification provider after synchronization");
+                }
+              } catch (e) {
+                debugPrint("AuthNotifier: Error invalidating notification provider: $e");
+                // Silently fail - this is not critical
+              }
+            });
+          }
+        } else {
+          debugPrint("AuthNotifier: Booking synchronization completed - no bookings to update");
+        }
+      } catch (e, stackTrace) {
+        debugPrint("AuthNotifier: Error during booking synchronization: $e");
+        debugPrint("AuthNotifier: Stack trace: $stackTrace");
+        // Don't throw - this is a background sync operation
+      }
+    });
   }
 
   // --- Public methods to interact with Auth ---

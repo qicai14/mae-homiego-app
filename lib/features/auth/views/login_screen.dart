@@ -91,10 +91,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // --- Logo Placeholder ---
-                  // TODO: Add your logo widget here later if needed
-                  // e.g., Image.asset('assets/logo.png', height: 80),
-                  const SizedBox(height: 40),
+                  // Homiego Logo
+                  Image.asset(
+                    'lib/assets/HOMIEGO LOGO.png',
+                    height: 100,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.home,
+                      size: 80,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   Text(
                     'Welcome Back to Homiego',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(

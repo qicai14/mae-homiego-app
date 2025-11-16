@@ -14,15 +14,6 @@ final recentlyAddedPropertiesProvider =
   return await PropertyService.getRecentlyAddedProperties();
 });
 
-/// Provider for near me properties (requires location) (with caching)
-final nearMePropertiesProvider =
-    FutureProvider.autoDispose.family<List<Property>, LocationParams>((ref, params) async {
-  return await PropertyService.getNearMeProperties(
-    params.latitude,
-    params.longitude,
-  );
-});
-
 /// Provider for budget-friendly properties (with caching)
 final budgetFriendlyPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
@@ -44,11 +35,6 @@ final privateStayPropertiesProvider =
 /// Provider for top host properties (with caching)
 final topHostPropertiesProvider = FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getTopHostProperties();
-});
-
-/// Provider for verified properties (with caching)
-final verifiedPropertiesProvider = FutureProvider.autoDispose<List<Property>>((ref) async {
-  return await PropertyService.getVerifiedProperties();
 });
 
 /// Search parameters model
@@ -122,12 +108,4 @@ final searchPropertiesProvider =
 final searchStateProvider = StateProvider<SearchParams>((ref) {
   return const SearchParams();
 });
-
-/// Helper class for location parameters
-class LocationParams {
-  final double latitude;
-  final double longitude;
-
-  LocationParams({required this.latitude, required this.longitude});
-}
 

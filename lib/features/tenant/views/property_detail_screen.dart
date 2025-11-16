@@ -6,8 +6,12 @@ import 'package:homiego/core/models/review.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/services/property_service.dart';
 import 'package:homiego/core/providers/auth_providers.dart';
+import 'package:homiego/core/providers/comparison_provider.dart';
 import 'package:homiego/core/constants/app_constants.dart';
 import 'package:homiego/core/services/supabase_client.dart';
+import 'package:homiego/features/booking/views/booking_detail_screen.dart';
+import 'package:homiego/features/tenant/views/property_reviews_screen.dart';
+import 'package:homiego/widgets/comparison_bottom_sheet.dart';
 
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   final Property property;
@@ -262,6 +266,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ],
               ),
             ),
+            // Top-right Compare button
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 8,
+              right: 8,
+              child: _buildCompareButton(),
+            ),
           ],
         ),
       ),
@@ -312,6 +322,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 _buildWishlistButton(),
               ],
             ),
+          ),
+          // Top-right Compare button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 8,
+            child: _buildCompareButton(),
           ),
 
           // Image index indicator (bottom-right)
@@ -377,6 +393,62 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             size: 20,
           ),
           onPressed: _toggleWishlist,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompareButton() {
+    final comparisonState = ref.watch(comparisonProvider);
+    final isInComparison = comparisonState.containsProperty(widget.property);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => DraggableScrollableSheet(
+              initialChildSize: 0.9,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (context, scrollController) => SingleChildScrollView(
+                controller: scrollController,
+                child: ComparisonBottomSheet(
+                  currentProperty: widget.property,
+                ),
+              ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Compare',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.compare_arrows,
+                color: isInComparison ? Colors.blue.shade200 : Colors.white,
+                size: 18,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -630,52 +702,67 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   }
 
   Widget _buildReviewsSection() {
-    if (_reviews.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Reviews',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No reviews yet',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Reviews',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Reviews',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              if (_reviews.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PropertyReviewsScreen(
+                          property: widget.property,
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'See All Reviews',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          decoration: TextDecoration.underline,
+                          decorationColor: Theme.of(context).colorScheme.primary,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
                 ),
+            ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            height: 200,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _reviews.length,
-              itemBuilder: (context, index) {
-                return _buildReviewCard(_reviews[index]);
-              },
+          if (_reviews.isEmpty)
+            Text(
+              'No reviews yet',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+            )
+          else
+            SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: _reviews.length,
+                itemBuilder: (context, index) {
+                  return _buildReviewCard(_reviews[index]);
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -821,7 +908,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             // Book Now button
             ElevatedButton(
               onPressed: () {
-                // TODO: Navigate to booking screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookingDetailScreen(property: widget.property),
+                  ),
+                );
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),

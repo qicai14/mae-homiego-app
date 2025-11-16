@@ -3,6 +3,7 @@ import 'package:homiego/features/tenant/views/account_screen.dart';
 import 'package:homiego/features/tenant/views/inbox_screen.dart';
 import 'package:homiego/features/tenant/views/tenant_home_screen.dart';
 import 'package:homiego/features/tenant/views/wishlist_screen.dart';
+import 'package:homiego/widgets/booking_monitor_wrapper.dart';
 
 class TenantMainScreen extends StatefulWidget {
   const TenantMainScreen({super.key});
@@ -38,12 +39,13 @@ class _TenantMainScreenState extends State<TenantMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // IndexedStack keeps the state of the screens when switching tabs
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
+    return BookingMonitorWrapper(
+      child: Scaffold(
+        // IndexedStack keeps the state of the screens when switching tabs
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _widgetOptions,
+        ),
       bottomNavigationBar: BottomNavigationBar(
         // These items match your wireframe (Figure 3)
         items: const <BottomNavigationBarItem>[
@@ -58,6 +60,7 @@ class _TenantMainScreenState extends State<TenantMainScreen> {
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // Good for 4+ items
         showUnselectedLabels: true,
+      ),
       ),
     );
   }

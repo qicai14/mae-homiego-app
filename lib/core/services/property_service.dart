@@ -6,7 +6,6 @@ import '../models/profile.dart';
 import '../models/booking.dart';
 import '../services/supabase_client.dart';
 import '../constants/app_constants.dart';
-import '../utils/distance_calculator.dart';
 
 /// Service for fetching and filtering properties
 class PropertyService {
@@ -47,57 +46,6 @@ class PropertyService {
           .toList();
     } catch (e) {
       print('Error fetching recently added properties: $e');
-      return [];
-    }
-  }
-
-  /// Fetch properties near user's location
-  static Future<List<Property>> getNearMeProperties(
-    double userLat,
-    double userLon,
-  ) async {
-    try {
-      // Fetch all approved properties
-      final response = await supabase
-          .from('properties')
-          .select()
-          .eq('status', 'approved');
-
-      final allProperties = (response as List)
-          .map((json) => Property.fromMap(json))
-          .toList();
-
-      // Filter by distance
-      final nearProperties = allProperties.where((property) {
-        final distance = DistanceCalculator.calculateDistance(
-          userLat,
-          userLon,
-          property.latitude,
-          property.longitude,
-        );
-        return distance <= AppConstants.nearMeRadiusKm;
-      }).toList();
-
-      // Sort by distance (closest first)
-      nearProperties.sort((a, b) {
-        final distA = DistanceCalculator.calculateDistance(
-          userLat,
-          userLon,
-          a.latitude,
-          a.longitude,
-        );
-        final distB = DistanceCalculator.calculateDistance(
-          userLat,
-          userLon,
-          b.latitude,
-          b.longitude,
-        );
-        return distA.compareTo(distB);
-      });
-
-      return nearProperties;
-    } catch (e) {
-      print('Error fetching near me properties: $e');
       return [];
     }
   }
@@ -242,25 +190,6 @@ class PropertyService {
       return topHostProperties;
     } catch (e) {
       print('Error fetching top host properties: $e');
-      return [];
-    }
-  }
-
-  /// Fetch verified properties
-  static Future<List<Property>> getVerifiedProperties() async {
-    try {
-      final response = await supabase
-          .from('properties')
-          .select()
-          .eq('status', 'approved')
-          .eq('verified', true)
-          .order('created_at', ascending: false);
-
-      return (response as List)
-          .map((json) => Property.fromMap(json))
-          .toList();
-    } catch (e) {
-      print('Error fetching verified properties: $e');
       return [];
     }
   }
@@ -525,6 +454,23 @@ class PropertyService {
       return Booking.fromMap(response);
     } catch (e) {
       print('Error fetching booking: $e');
+      return null;
+    }
+  }
+
+  /// Get property by ID
+  static Future<Property?> getPropertyById(int propertyId) async {
+    try {
+      final response = await supabase
+          .from('properties')
+          .select()
+          .eq('id', propertyId)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return Property.fromMap(response);
+    } catch (e) {
+      print('Error fetching property: $e');
       return null;
     }
   }

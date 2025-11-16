@@ -91,10 +91,7 @@ class AppConstants {
   // --- Property Listing Constants ---
 
   /// Budget-friendly price threshold in MYR
-  static const double budgetFriendlyThreshold = 100.0;
-
-  /// Maximum radius for "Near Me" category in kilometers
-  static const double nearMeRadiusKm = 15.0;
+  static const double budgetFriendlyThreshold = 150.0;
 
   /// Minimum number of properties required to display a category
   static const int minPropertiesPerCategory = 2;
@@ -105,6 +102,19 @@ class AppConstants {
   /// Number of recently added properties to show
   static const int recentlyAddedCount = 10;
 
+  // --- Booking Constants ---
+
+  /// Standard check-in time (3:00 PM)
+  static const int checkInHour = 15;
+  static const int checkInMinute = 0;
+
+  /// Standard check-out time (12:00 PM)
+  static const int checkOutHour = 12;
+  static const int checkOutMinute = 0;
+
+  /// Cleanup/rest period in days (1 day between checkout and next checkin)
+  static const int cleaningPeriodDays = 1;
+
   // --- Cancellation Policy ---
 
   /// Cancellation policy for Homiego platform
@@ -112,10 +122,10 @@ class AppConstants {
 1. Tenant Cancellations
 
 Full Refund:
-Tenants can cancel their booking within 24 hours of confirmation to receive a full refund, excluding service fees.
+Tenants can cancel their booking and receive a full refund (excluding service fees) as long as the check-in date and time is more than 24 hours away from the current time.
 
 No Refund:
-After 24 hours from booking confirmation, the payment becomes non-refundable.
+To avoid last minute cancellations, once the check-in date and time is 24 hours or less away from the current time, the payment becomes non-refundable.
 
 Early Checkout:
 If a tenant decides to leave before the checkout date, the remaining nights will not be refunded.
