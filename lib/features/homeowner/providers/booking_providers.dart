@@ -1,3 +1,5 @@
+// lib/features/homeowner/providers/booking_providers.dart
+
 import 'package:homiego/core/models/property.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
@@ -32,7 +34,7 @@ final homeownerProfileProvider = Provider<Profile>((ref) {
 /// Returns a `List<Map<String, dynamic>>` containing joined data from:
 /// - bookings (*)
 /// - properties (title)
-/// - profiles (tenant's full_name, avatar_url)
+/// - profiles (tenant's full_name, avatar_url, is_verified)
 final homeownerBookingsStreamProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) async* {
   final profile = ref.watch(homeownerProfileProvider);
@@ -60,8 +62,9 @@ final homeownerBookingsStreamProvider =
       final data = await supabase
           .from('bookings')
           .select(
-              // --- THIS IS THE CORRECT JOIN ---
-              '*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url)')
+            // --- MODIFIED: Added 'is_verified' to the profiles join ---
+            '*, properties:property_id(title), profiles:tenant_id(full_name, avatar_url, is_verified)',
+          )
           .inFilter('property_id', propertyIds)
           // --- FILTER REMOVED ---
           // .eq('status', 'pending') // <-- This filter was removed

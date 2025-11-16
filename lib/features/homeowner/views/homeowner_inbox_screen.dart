@@ -1,3 +1,5 @@
+// lib/features/homeowner/views/homeowner_inbox_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 // --- IMPORT THE CENTRALIZED PROVIDER ---
@@ -67,10 +69,15 @@ class HomeownerInboxScreen extends ConsumerWidget {
               final bookingStatus = booking['status'] as String? ?? 'pending';
               final isPending = bookingStatus == 'pending';
               // --- ADDED: Check if this specific card is loading ---
-              final bool isThisLoading = updatingBookingId == (booking['id'] as int);
+              final bool isThisLoading =
+                  updatingBookingId == (booking['id'] as int);
 
               final tenantName =
                   tenantProfile['full_name'] as String? ?? 'Unknown';
+              // --- ADDED: Parse the new is_verified boolean ---
+              final isTenantVerified =
+                  tenantProfile['is_verified'] as bool? ?? false;
+
               final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
               final propertyTitle =
                   property['title'] as String? ?? 'Unknown Property';
@@ -105,12 +112,31 @@ class HomeownerInboxScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  tenantName,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                // --- MODIFIED: Replaced Text with Row for verified badge ---
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        tenantName,
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    if (isTenantVerified)
+                                      Icon(
+                                        Icons.verified,
+                                        color: theme.primaryColor,
+                                        size: 16,
+                                      ),
+                                  ],
                                 ),
+                                // --- END MODIFICATION ---
                                 const SizedBox(height: 4),
                                 Text(
                                   propertyTitle,
