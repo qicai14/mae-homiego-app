@@ -224,15 +224,21 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       }
 
       // --- STEP 3: Insert Image Records into DB ---
-      final imageRecords = storagePaths.map((path) {
+      final imageRecords = storagePaths.map((relativePath) {
+        // --- FIX: Get the full public URL from the relative path ---
+        final publicUrl = supabase.storage
+            .from('property_image') // Your bucket name (singular)
+            .getPublicUrl(relativePath);
+
         return {
           'property_id': newPropertyId,
-          'storage_path': path,
-          'position': storagePaths.indexOf(path), // 0-based index
+          'storage_path': publicUrl, // Store the full URL, not the relative path
+          'position': storagePaths.indexOf(relativePath), // 0-based index
         };
       }).toList();
 
       await supabase.from('property_images').insert(imageRecords);
+
 
       // --- STEP 4: Finalize (Success) ---
       if (mounted) {
