@@ -137,7 +137,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   /// The main multi-step creation logic.
   /// 1. Inserts property data into 'properties' table.
-  /// 2. Uploads selected images to 'property_images' storage bucket.
+  /// 2. Uploads selected images to 'property_image' storage bucket.
   /// 3. Inserts image metadata into 'property_images' table.
   Future<void> _createListing() async {
     // 1. Validate form
@@ -212,9 +212,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         final file = File(image.path);
         final fileExtension = image.path.split('.').last.toLowerCase();
         // Create a unique, organized storage path
-        final storagePath = 'public/$newPropertyId/image_$i.$fileExtension';
+        final storagePath = '$newPropertyId/image_$i.$fileExtension';
 
-        await supabase.storage.from('property_images').upload(
+        await supabase.storage.from('property_image').upload(
               storagePath,
               file,
               fileOptions:
