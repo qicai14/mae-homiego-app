@@ -8,7 +8,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:homiego/core/constants/app_constants.dart';
 import 'package:homiego/core/models/property.dart';
-import 'package:homiego/core/models/property_image.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 import 'package:image_picker/image_picker.dart';
@@ -119,29 +118,57 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 
   Future<void> _updateMapFromAddress() async {
-    if (_addressController.text.isEmpty) {
+    final addressText = _addressController.text.trim();
+    if (addressText.isEmpty) {
       showSnackBar(context, 'Please enter an address to search', isError: true);
       return;
     }
+    
+    // On web, geocoding package doesn't work reliably - disable address search
+    if (kIsWeb) {
+      showSnackBar(context, 'Address search is not available on web. Please tap on the map to select a location instead.', 
+          isError: true);
+      return;
+    }
+    
     try {
-      final locations = await locationFromAddress(_addressController.text);
+      final locations = await locationFromAddress(addressText);
       if (locations.isNotEmpty) {
         final location = locations.first;
-        final latLng = LatLng(location.latitude, location.longitude);
-        setState(() {
-          _selectedLocation = latLng;
-        });
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLngZoom(latLng, 15),
-        );
+        final lat = location.latitude;
+        final lng = location.longitude;
+        
+        // Validate that coordinates are within reasonable bounds
+        if (lat.isFinite && lng.isFinite && 
+            lat >= -90 && lat <= 90 && 
+            lng >= -180 && lng <= 180) {
+          final latLng = LatLng(lat, lng);
+          setState(() {
+            _selectedLocation = latLng;
+          });
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLngZoom(latLng, 15),
+          );
+        } else {
+          if (mounted) {
+            showSnackBar(context, 'Invalid address coordinates returned', isError: true);
+          }
+        }
       } else {
         if (mounted) {
-          showSnackBar(context, 'Address not found', isError: true);
+          showSnackBar(context, 'Address not found. Please try a more specific address or use the map to select a location.', 
+              isError: true);
         }
       }
     } catch (e) {
       if (mounted) {
-        showSnackBar(context, 'Error finding address: $e', isError: true);
+        debugPrint('Geocoding error: $e');
+        // On web, geocoding might not be available or might fail
+        // Provide a more helpful error message
+        final errorMessage = kIsWeb 
+            ? 'Geocoding may not be available on web. Please use the map to select a location instead.'
+            : 'Error finding address: $e';
+        showSnackBar(context, errorMessage, isError: true);
       }
     }
   }

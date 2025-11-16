@@ -56,13 +56,15 @@ class PropertyBox extends StatelessWidget {
             // Top: Image - fixed aspect ratio
             AspectRatio(
               aspectRatio: 12 / 9, // Fixed aspect ratio for image
-              child: Image.network(
-                imageUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Center(child: Icon(Icons.image_not_supported)),
-              ),
+              child: publicUrl != null && publicUrl.isNotEmpty
+                  ? Image.network(
+                      publicUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(child: Icon(Icons.image_not_supported)),
+                    )
+                  : const Center(child: Icon(Icons.image_not_supported)),
             ),
 
             // Bottom: Details - fixed height
