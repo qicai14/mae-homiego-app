@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:homiego/core/services/supabase_client.dart'; // <-- 1. IMPORT
 
 class PropertyBox extends StatelessWidget {
-  final String imageUrl;
+  final String? imageUrl; // <-- 2. MAKE NULLABLE
   final String name;
   final String location;
   final double rating;
@@ -11,7 +12,7 @@ class PropertyBox extends StatelessWidget {
 
   const PropertyBox({
     super.key,
-    required this.imageUrl,
+    this.imageUrl, // <-- 3. MAKE OPTIONAL
     required this.name,
     required this.location,
     required this.rating,
@@ -22,6 +23,27 @@ class PropertyBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 4. ADD LOGIC TO BUILD PUBLIC URL
+    String? publicUrl;
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      // Check if it's already a full URL (safety check)
+      if (imageUrl!.startsWith('http')) {
+        publicUrl = imageUrl;
+      } else {
+        // This is a storage path. Create the public URL.
+        // ASSUMPTION: Your storage bucket is named 'property_images'.
+        try {
+          publicUrl = supabase
+              .storage
+              .from('property_images') // <-- This is the BUCKET NAME
+              .getPublicUrl(imageUrl!); // <-- This is the storage PATH
+        } catch (e) {
+          debugPrint('Error getting public URL: $e');
+          publicUrl = null; // Set to null if URL creation fails
+        }
+      }
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Card(

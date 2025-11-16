@@ -1,3 +1,5 @@
+import 'package:homiego/core/models/property_image.dart'; // <-- 1. IMPORT
+
 enum PropertyStatus { pending, approved, rejected }
 
 class Property {
@@ -17,6 +19,7 @@ class Property {
   final bool verified;
   final double cleaningFee;
   final double serviceFee;
+  final List<PropertyImage> images; // <-- 2. ADD FIELD
 
   Property({
     required this.id,
@@ -35,6 +38,7 @@ class Property {
     required this.verified,
     required this.cleaningFee,
     required this.serviceFee,
+    required this.images, // <-- 3. ADD TO CONSTRUCTOR
   });
 
   factory Property.fromMap(Map<String, dynamic> map) {
@@ -60,6 +64,12 @@ class Property {
       verified: map['verified'] as bool? ?? false,
       cleaningFee: (map['cleaning_fee'] as num?)?.toDouble() ?? 0.0,
       serviceFee: (map['service_fee'] as num?)?.toDouble() ?? 0.0,
+      // 4. ADD PARSING LOGIC
+      images: (map['property_images'] as List<dynamic>?)
+              ?.map((imgMap) =>
+                  PropertyImage.fromMap(imgMap as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -81,7 +91,7 @@ class Property {
       'verified': verified,
       'cleaning_fee': cleaningFee,
       'service_fee': serviceFee,
+      // Note: We don't typically need to map images back TO the DB
     };
   }
 }
-

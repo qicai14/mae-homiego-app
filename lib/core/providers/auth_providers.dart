@@ -291,6 +291,38 @@ class AuthNotifier extends AsyncNotifier<AppAuthState> {
         debugPrint("AuthNotifier: Cannot refresh, no user logged in.");
      }
   }
+
+
+
+  /// Updates the user's profile in the 'profiles' table and refreshes the state.
+  Future<void>   updateProfile(Map<String, dynamic> data) async {
+    final profileId = state.value?.profile?.id;
+    if (profileId == null) {
+      throw Exception('User is not logged in. Cannot update profile.');
+    }
+
+    try {
+      debugPrint("AuthNotifier: Updating profile for $profileId with data: $data");
+      // 1. Update the database
+      await supabase.from('profiles').update(data).eq('id', profileId);
+
+      // 2. Refetch the profile to get fresh data
+      debugPrint("AuthNotifier: Update successful, refetching profile...");
+      final newProfile = await _fetchProfile(profileId);
+
+      // 3. Update the local Riverpod state
+      if (newProfile != null) {
+        state = AsyncData(state.value!.copyWith(profile: newProfile));
+        debugPrint("AuthNotifier: State updated with new profile.");
+      } else {
+        // This case is unlikely if the update succeeded, but good to handle
+        throw Exception('Failed to refetch profile after update.');
+      }
+    } catch (e) {
+      debugPrint("AuthNotifier: updateProfile failed: $e");
+      rethrow; // Rethrow to be caught by the UI
+    }
+  }
 }
 
 // --- Provider Definition ---
