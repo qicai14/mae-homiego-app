@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:homiego/core/services/supabase_client.dart'; // <-- 1. IMPORT
 
 class PropertyBox extends StatelessWidget {
-  final String imageUrl;
+  final String? imageUrl; // <-- 2. MAKE NULLABLE
   final String name;
   final String location;
   final double rating;
@@ -11,7 +12,7 @@ class PropertyBox extends StatelessWidget {
 
   const PropertyBox({
     super.key,
-    required this.imageUrl,
+    this.imageUrl, // <-- 3. MAKE OPTIONAL
     required this.name,
     required this.location,
     required this.rating,
@@ -22,33 +23,55 @@ class PropertyBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 4. ADD LOGIC TO BUILD PUBLIC URL
+    String? publicUrl;
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      // Check if it's already a full URL (safety check)
+      if (imageUrl!.startsWith('http')) {
+        publicUrl = imageUrl;
+      } else {
+        // This is a storage path. Create the public URL.
+        // ASSUMPTION: Your storage bucket is named 'property_images'.
+        try {
+          publicUrl = supabase
+              .storage
+              .from('property_images') // <-- This is the BUCKET NAME
+              .getPublicUrl(imageUrl!); // <-- This is the storage PATH
+        } catch (e) {
+          debugPrint('Error getting public URL: $e');
+          publicUrl = null; // Set to null if URL creation fails
+        }
+      }
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Card(
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         clipBehavior: Clip.antiAlias,
-        child: Column( // This is the Column from the error log
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- THIS IS THE FIX ---
-            // We replace the flexible 'Expanded' with a fixed-ratio 'AspectRatio'.
-            // This gives the Column a finite height to provide to its children.
             AspectRatio(
-              aspectRatio: 16 / 9, // Common ratio for property images
-              child: (imageUrl.isEmpty || !imageUrl.startsWith('http'))
-                  // If imageUrl is empty or invalid, show placeholder immediately
+              aspectRatio: 16 / 9,
+              // 5. REPLACE THE CHILD WITH NEW LOGIC
+              child: (publicUrl == null || publicUrl.isEmpty)
                   ? Container(
                       color: Colors.grey[200],
                       child: const Center(
                           child: Icon(Icons.image_not_supported,
                               color: Colors.grey)),
                     )
-                  // Otherwise, attempt to load the network image
                   : Image.network(
-                      imageUrl,
+                      publicUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
+                      // Show a loading builder
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: Colors.grey[200],
                         child: const Center(
@@ -57,9 +80,7 @@ class PropertyBox extends StatelessWidget {
                       ),
                     ),
             ),
-            // --- END OF FIX ---
-
-            // Bottom: Details - this part was already fine
+            // Bottom: Details - this part is unchanged
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(

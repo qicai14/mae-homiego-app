@@ -1,6 +1,6 @@
 import 'package:homiego/core/models/property.dart';
 import 'dart:async';
-import 'package:flutter/foundation.dart'; // <-- FIX IS HERE
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/providers/auth_providers.dart';
@@ -109,9 +109,11 @@ final myListingsProvider = FutureProvider<List<Property>>((ref) async {
   // --- ADD THIS LINE ---
   debugPrint('[myListingsProvider] Fetching listings for host_id: ${profile.id}');
 
-  // Query Supabase for properties owned by this homeowner
-  final rows =
-      await supabase.from('properties').select().eq('host_id', profile.id);
+  // Query Supabase for properties AND their images
+  final rows = await supabase
+      .from('properties')
+      .select('*, property_images(*)') // <-- THE FIX
+      .eq('host_id', profile.id);
 
   // --- ADD THIS LINE ---
   debugPrint('[myListingsProvider] Rows received from Supabase: $rows');

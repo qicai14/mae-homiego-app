@@ -8,7 +8,6 @@ import 'package:homiego/features/homeowner/providers/booking_providers.dart'
     show homeownerProfileProvider, myListingsProvider;
 // --- END CHANGES ---
 
-
 // --- CHANGES ---
 // REMOVED the entire myListingsProvider definition from this file.
 // It now lives in 'booking_providers.dart'.
@@ -22,7 +21,7 @@ class MyListingsScreen extends ConsumerWidget {
     // This 'watch' is now safe and will use the new RLS policy
     final listingsAsync = ref.watch(myListingsProvider);
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -64,9 +63,16 @@ class MyListingsScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 18),
             itemBuilder: (ctx, idx) {
               final property = list[idx];
-              // In a real app, photo, rating/review would be joined, for now stub:
+
+              // --- 1. GET THE IMAGE PATH ---
+              // Get the first image path, or null if no images exist
+              final String? imagePath = property.images.isNotEmpty
+                  ? property.images.first.storagePath
+                  : null;
+
+              // --- 2. PASS THE PATH TO THE WIDGET ---
               return PropertyBox(
-                imageUrl: '', // TODO: Attach with photo property if available
+                imageUrl: imagePath, // <-- THE FIX
                 name: property.title,
                 location: property.address,
                 rating: 5.0, // TODO: Aggregate from reviews
