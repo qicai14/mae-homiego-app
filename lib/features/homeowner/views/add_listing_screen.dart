@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart'; // Import for Gesture Recognizer Factory
-import 'package:flutter/gestures.dart'; // Import for Gesture Recognizer
+import 'package:flutter/foundation.dart'; 
+import 'package:flutter/gestures.dart'; 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,7 +27,6 @@ class AddListingScreen extends ConsumerStatefulWidget {
 }
 
 class _AddListingScreenState extends ConsumerState<AddListingScreen> {
-  // Use your existing local state bool
   bool _isLoading = false;
 
   late final bool _isEditMode;
@@ -367,7 +366,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           children: [
             _buildPage1Details(),
             _buildPage2ImagesAndAmenities(),
-            _buildPage3Location(), // Renamed
+            _buildPage3Location(), 
           ],
         ),
       ),
@@ -744,7 +743,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   }
 }
 
-// Your existing _AmenitiesSection helper widget
+//  _AmenitiesSection helper widget
 class _AmenitiesSection extends StatelessWidget {
   const _AmenitiesSection({
     required this.selectedAmenities,

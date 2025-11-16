@@ -1,14 +1,10 @@
-// lib/features/homeowner/views/homeowner_inbox_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// --- IMPORT THE CENTRALIZED PROVIDER ---
 import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
-// --- ADDED: Provider to track which booking is currently being updated ---
 final _updatingBookingProvider = StateProvider<int?>((ref) => null);
 
 class HomeownerInboxScreen extends ConsumerWidget {
@@ -16,9 +12,7 @@ class HomeownerInboxScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // --- USE THE NEW, REFACTORED STREAM PROVIDER ---
     final bookingsAsync = ref.watch(homeownerBookingsStreamProvider);
-    // --- ADDED: Watch the loading state ---
     final updatingBookingId = ref.watch(_updatingBookingProvider);
     final theme = Theme.of(context);
 
@@ -68,13 +62,11 @@ class HomeownerInboxScreen extends ConsumerWidget {
 
               final bookingStatus = booking['status'] as String? ?? 'pending';
               final isPending = bookingStatus == 'pending';
-              // --- ADDED: Check if this specific card is loading ---
               final bool isThisLoading =
                   updatingBookingId == (booking['id'] as int);
 
               final tenantName =
                   tenantProfile['full_name'] as String? ?? 'Unknown';
-              // --- ADDED: Parse the new is_verified boolean ---
               final isTenantVerified =
                   tenantProfile['is_verified'] as bool? ?? false;
 
@@ -112,7 +104,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // --- MODIFIED: Replaced Text with Row for verified badge ---
                                 Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -136,7 +127,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                                       ),
                                   ],
                                 ),
-                                // --- END MODIFICATION ---
                                 const SizedBox(height: 4),
                                 Text(
                                   propertyTitle,
@@ -176,7 +166,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          // --- ADDED: Show loading indicator or status ---
                           if (isThisLoading)
                             const SizedBox(
                               height: 20,
@@ -200,7 +189,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                          // --- END ADDED ---
                         ],
                       ),
                       if (isPending) ...[
@@ -209,7 +197,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                           children: [
                             Expanded(
                               child: OutlinedButton(
-                                // --- CHANGED: Disable button when loading ---
                                 onPressed: isThisLoading
                                     ? null
                                     : () => _handleDecline(
@@ -220,7 +207,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
                             const SizedBox(width: 12),
                             Expanded(
                               child: ElevatedButton(
-                                // --- CHANGED: Disable button when loading ---
                                 onPressed: isThisLoading
                                     ? null
                                     : () => _handleAccept(
@@ -266,7 +252,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button1Text: 'Cancel',
       button2Text: 'Accept',
       button2Callback: () async {
-        // --- CHANGED: Set loading state and add finally block ---
         ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
           await supabase
@@ -275,7 +260,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
               .eq('id', bookingId);
 
           if (context.mounted) {
-            // --- ADDED: Manually invalidate the stream to force refresh ---
             ref.invalidate(homeownerBookingsStreamProvider);
             showSnackBar(context, 'Booking accepted successfully!');
           }
@@ -285,12 +269,10 @@ class HomeownerInboxScreen extends ConsumerWidget {
                 isError: true);
           }
         } finally {
-          // --- ADDED: Clear loading state ---
           if (context.mounted) {
             ref.read(_updatingBookingProvider.notifier).state = null;
           }
         }
-        // --- END CHANGED ---
       },
     );
   }
@@ -304,7 +286,6 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button1Text: 'Cancel',
       button2Text: 'Decline',
       button2Callback: () async {
-        // --- CHANGED: Set loading state and add finally block ---
         ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
           await supabase
@@ -323,12 +304,10 @@ class HomeownerInboxScreen extends ConsumerWidget {
                 isError: true);
           }
         } finally {
-          // --- ADDED: Clear loading state ---
           if (context.mounted) {
             ref.read(_updatingBookingProvider.notifier).state = null;
           }
         }
-        // --- END CHANGED ---
       },
     );
   }

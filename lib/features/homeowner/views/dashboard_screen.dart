@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/models/property.dart' as property_model;
-// --- IMPORT THE CENTRALIZED PROVIDER ---
 import 'package:homiego/features/homeowner/providers/booking_providers.dart';
-// --- IMPORT THE NEW DASHBOARD PROVIDERS ---
 import 'package:homiego/features/homeowner/providers/dashboard_providers.dart';
-// --- IMPORT THE SUPABASE CLIENT GETTER ---
 import 'package:homiego/core/services/supabase_client.dart';
-// --- ADDED: Import for navigation provider ---
 import 'package:homiego/features/homeowner/views/homeowner_main_screen.dart';
 
 // --- DASHBOARD WIDGET ---
@@ -20,13 +16,11 @@ class HomeownerDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(homeownerProfileProvider);
 
-    // --- USE THE NEW EFFICIENT COUNT PROVIDER ---
     final pendingCount = ref.watch(
         dashboardPropertyCountProvider(property_model.PropertyStatus.pending));
     final approvedCount = ref.watch(
         dashboardPropertyCountProvider(property_model.PropertyStatus.approved));
 
-    // --- USE THE NEW DERIVED PENDING BOOKINGS PROVIDER ---
     final bookingsAsync = ref.watch(dashboardPendingBookingsProvider);
 
     final theme = Theme.of(context);
@@ -91,17 +85,6 @@ class HomeownerDashboardScreen extends ConsumerWidget {
                         );
                 },
               ),
-              const SizedBox(height: 28),
-              // Latest Review Section
-              Text('Latest Review',
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-
-              // --- USE PLACEHOLDER AS REQUESTED ---
-              const _PlaceholderBox('Latest Reviews (coming soon)'),
-
-              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -158,12 +141,10 @@ class _BookingRequestCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    // --- THIS PARSING LOGIC IS CORRECT ---
     // Parse the map data
     final tenantProfile = bookingMap['profiles'] as Map<String, dynamic>? ?? {};
     final tenantName = tenantProfile['full_name'] as String? ?? 'Unknown';
     final tenantAvatarUrl = tenantProfile['avatar_url'] as String?;
-    // --- END CORRECT PARSING ---
 
     return Card(
       elevation: 2,
@@ -189,11 +170,10 @@ class _BookingRequestCard extends ConsumerWidget {
                   Text('Request From:',
                       style: theme.textTheme.labelMedium
                           ?.copyWith(color: Colors.grey[700])),
-                  Text(tenantName, // <-- This will now display the name
+                  Text(tenantName, 
                       style: theme.textTheme.bodyLarge
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  // --- CHANGED: Replaced buttons ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -211,7 +191,6 @@ class _BookingRequestCard extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  // --- END CHANGED ---
                 ],
               ),
             ),
@@ -222,7 +201,6 @@ class _BookingRequestCard extends ConsumerWidget {
   }
 }
 
-// --- REMOVED _ReviewCard widget ---
 
 class _PlaceholderBox extends StatelessWidget {
   final String label;

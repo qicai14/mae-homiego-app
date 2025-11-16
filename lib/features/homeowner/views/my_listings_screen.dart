@@ -28,8 +28,8 @@ class MyListingsScreen extends ConsumerWidget {
       title: 'Delete Listing?',
       description:
           'Are you sure you want to delete "${property.title}"? This action cannot be undone.',
-      button1Text: 'Cancel', // Your util uses button1 for TextButton
-      button2Text: 'Delete', // Your util uses button2 for ElevatedButton
+      button1Text: 'Cancel', 
+      button2Text: 'Delete', 
       button2Callback: () async {
         // 2. Put all delete logic inside the confirmation callback
         ref.read(_isDeletingProvider.notifier).state = true;
@@ -67,9 +67,7 @@ class MyListingsScreen extends ConsumerWidget {
   // Helper widget for the action buttons
   Widget _buildActionRow(
     WidgetRef ref,
-    // --- FIX: Corrected typo 'BuildContextContext' to 'BuildContext' ---
     BuildContext context,
-    // --- END FIX ---
     Property property,
   ) {
     final isDeleting = ref.watch(_isDeletingProvider);
@@ -82,9 +80,7 @@ class MyListingsScreen extends ConsumerWidget {
         children: [
           // --- EDIT BUTTON ---
           IconButton(
-            // --- FIX: Changed 'Icons.edit_outline' to 'Icons.edit' ---
             icon: const Icon(Icons.edit),
-            // --- END FIX ---
             tooltip: 'Edit Listing',
             onPressed: () async {
               // Navigate to AddListingScreen in "Edit" mode

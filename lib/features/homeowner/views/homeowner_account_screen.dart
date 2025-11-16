@@ -4,7 +4,6 @@ import 'package:homiego/core/providers/auth_providers.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 import 'package:homiego/features/homeowner/views/edit_homeowner_profile_screen.dart';
-// --- 1. IMPORT NEW VERIFICATION SCREEN ---
 import 'package:homiego/features/homeowner/views/host_verification_screen.dart';
 
 class HomeownerAccountScreen extends ConsumerWidget {
@@ -20,7 +19,6 @@ class HomeownerAccountScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('My Account'),
         centerTitle: true,
-        // --- 2. ADD CONDITIONAL VERIFIED BADGE ---
         actions: [
           authStateAsync.when(
             data: (state) {
@@ -58,7 +56,6 @@ class HomeownerAccountScreen extends ConsumerWidget {
         data: (authState) {
           final profile = authState.profile;
 
-          // Handle null profile safely
           if (profile == null) {
             return Center(
               child: Padding(

@@ -66,7 +66,7 @@ class _HostVerificationScreenState
 
   @override
   Widget build(BuildContext context) {
-    // Screen 2: Show loading UI (image_e2d99d.png)
+    // Screen 2: Show loading UI 
     if (_isLoading) {
       return Scaffold(
         body: Center(
@@ -90,7 +90,7 @@ class _HostVerificationScreenState
       );
     }
 
-    // Screen 1: Show verification UI (image_e2d97e.png)
+    // Screen 1: Show verification UI 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verify Account'),
