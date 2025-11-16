@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/providers/auth_providers.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
-import 'package:homiego/features/homeowner/views/edit_homeowner_profile_screen.dart'; // <-- 1. IMPORT NEW SCREEN
+import 'package:homiego/features/homeowner/views/edit_homeowner_profile_screen.dart';
+// --- 1. IMPORT NEW VERIFICATION SCREEN ---
+import 'package:homiego/features/homeowner/views/host_verification_screen.dart';
 
 class HomeownerAccountScreen extends ConsumerWidget {
   const HomeownerAccountScreen({super.key});
@@ -12,11 +14,34 @@ class HomeownerAccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authStateAsync = ref.watch(authNotifierProvider);
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Account'),
         centerTitle: true,
+        // --- 2. ADD CONDITIONAL VERIFIED BADGE ---
+        actions: [
+          authStateAsync.when(
+            data: (state) {
+              final profile = state.profile;
+              if (profile != null && profile.isVerified) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Chip(
+                    avatar: const Icon(Icons.verified, color: Colors.green),
+                    label: const Text('Verified Account'),
+                    backgroundColor: colorScheme.surface,
+                    side: BorderSide(color: colorScheme.outlineVariant),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (e, st) => const SizedBox.shrink(),
+          )
+        ],
       ),
       body: authStateAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -32,7 +57,7 @@ class HomeownerAccountScreen extends ConsumerWidget {
         ),
         data: (authState) {
           final profile = authState.profile;
-          
+
           // Handle null profile safely
           if (profile == null) {
             return Center(
@@ -40,7 +65,8 @@ class HomeownerAccountScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24.0),
                 child: Text(
                   'Profile not found. Please log in again.',
-                  style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
+                  style:
+                      theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[700]),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -57,9 +83,10 @@ class HomeownerAccountScreen extends ConsumerWidget {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey[300],
-                  backgroundImage: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
-                      ? NetworkImage(profile.avatarUrl!)
-                      : null,
+                  backgroundImage:
+                      profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
+                          ? NetworkImage(profile.avatarUrl!)
+                          : null,
                   child: profile.avatarUrl == null || profile.avatarUrl!.isEmpty
                       ? const Icon(Icons.person, size: 50, color: Colors.grey)
                       : null,
@@ -80,11 +107,11 @@ class HomeownerAccountScreen extends ConsumerWidget {
                           label: 'Name',
                           value: profile.fullName ?? 'Not set',
                           onEdit: () {
-                            // --- 2. UPDATE NAVIGATION ---
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const EditHomeownerProfileScreen(),
+                                builder: (context) =>
+                                    const EditHomeownerProfileScreen(),
                               ),
                             );
                           },
@@ -94,12 +121,12 @@ class HomeownerAccountScreen extends ConsumerWidget {
                         _ProfileInfoRow(
                           label: 'Contact No',
                           value: profile.contactNo ?? 'Not set',
-                           onEdit: () {
-                            // --- 2. UPDATE NAVIGATION ---
+                          onEdit: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const EditHomeownerProfileScreen(),
+                                builder: (context) =>
+                                    const EditHomeownerProfileScreen(),
                               ),
                             );
                           },
@@ -109,12 +136,12 @@ class HomeownerAccountScreen extends ConsumerWidget {
                         _ProfileInfoRow(
                           label: 'Gender',
                           value: profile.gender ?? 'Not set',
-                           onEdit: () {
-                            // --- 2. UPDATE NAVIGATION ---
+                          onEdit: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const EditHomeownerProfileScreen(),
+                                builder: (context) =>
+                                    const EditHomeownerProfileScreen(),
                               ),
                             );
                           },
@@ -142,12 +169,33 @@ class HomeownerAccountScreen extends ConsumerWidget {
                   ),
                   child: Column(
                     children: [
+                      // --- 3. ADD CONDITIONAL VERIFICATION TILE ---
+                      if (!profile.isVerified) ...[
+                        ListTile(
+                          leading: const Icon(Icons.shield_outlined),
+                          title: const Text('Verify Your Account'),
+                          subtitle:
+                              const Text('Get a verified badge to build trust'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const HostVerificationScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        const Divider(height: 1),
+                      ],
                       ListTile(
                         leading: const Icon(Icons.history),
                         title: const Text('View Property Rental History'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () {
-                          showSnackBar(context, 'Property Rental History feature coming soon!');
+                          showSnackBar(context,
+                              'Property Rental History feature coming soon!');
                         },
                       ),
                       const Divider(height: 1),
@@ -157,7 +205,8 @@ class HomeownerAccountScreen extends ConsumerWidget {
                           'Logout',
                           style: TextStyle(color: Colors.red),
                         ),
-                        trailing: const Icon(Icons.chevron_right, color: Colors.red),
+                        trailing:
+                            const Icon(Icons.chevron_right, color: Colors.red),
                         onTap: () => _handleLogout(context, ref),
                       ),
                     ],
