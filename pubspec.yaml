@@ -28,6 +28,7 @@ dependencies:
   flutter_riverpod: ^2.5.1   # For State Management
   flutter_dotenv: ^5.1.0     # For securing API keys
   google_fonts: ^6.2.1       # For your app's theme
+  intl: ^0.19.0              # For date and time formatting
   # --- END OF ADDED PACKAGES ---
 
 dev_dependencies:
@@ -46,9 +47,10 @@ flutter:
   uses-material-design: true
 
   # --- ADD THIS ASSETS SECTION ---
-  # This allows your app to read the .env file
+  # This allows your app to read the .env file and use image assets
   assets:
     - .env
+    - lib/assets/
   # --- END OF ASSETS SECTION ---
 
   # To add custom fonts to your application, add a fonts section here,

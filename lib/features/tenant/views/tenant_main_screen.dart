@@ -3,6 +3,7 @@ import 'package:homiego/features/tenant/views/account_screen.dart';
 import 'package:homiego/features/tenant/views/inbox_screen.dart';
 import 'package:homiego/features/tenant/views/tenant_home_screen.dart';
 import 'package:homiego/features/tenant/views/wishlist_screen.dart';
+import 'package:homiego/widgets/booking_monitor_wrapper.dart';
 
 class TenantMainScreen extends StatefulWidget {
   const TenantMainScreen({super.key});
@@ -13,29 +14,38 @@ class TenantMainScreen extends StatefulWidget {
 
 class _TenantMainScreenState extends State<TenantMainScreen> {
   int _selectedIndex = 0;
+  final GlobalKey _wishlistKey = GlobalKey();
 
   // These are the screens for the tenant
-  static const List<Widget> _widgetOptions = <Widget>[
-    TenantHomeScreen(),
-    TenantWishlistScreen(),
-    TenantInboxScreen(),
-    TenantAccountScreen(),
+  late final List<Widget> _widgetOptions = [
+    const TenantHomeScreen(),
+    TenantWishlistScreen(key: _wishlistKey),
+    const TenantInboxScreen(),
+    const TenantAccountScreen(),
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    // Refresh wishlist when switching to wishlist tab
+    if (index == 1) {
+      final wishlistState = _wishlistKey.currentState;
+      if (wishlistState != null) {
+        (wishlistState as dynamic).refreshWishlist();
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      // IndexedStack keeps the state of the screens when switching tabs
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _widgetOptions,
-      ),
+    return BookingMonitorWrapper(
+      child: Scaffold(
+        // IndexedStack keeps the state of the screens when switching tabs
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _widgetOptions,
+        ),
       bottomNavigationBar: BottomNavigationBar(
         // These items match your wireframe (Figure 3)
         items: const <BottomNavigationBarItem>[
@@ -50,6 +60,7 @@ class _TenantMainScreenState extends State<TenantMainScreen> {
         onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed, // Good for 4+ items
         showUnselectedLabels: true,
+      ),
       ),
     );
   }

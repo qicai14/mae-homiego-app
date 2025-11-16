@@ -2,22 +2,17 @@ import 'package:flutter/material.dart';
 
 /// Shows a confirmation dialog with customizable title, description, and buttons.
 /// 
-/// [button1] is displayed as a TextButton (typically used for Cancel).
-/// [button2] is displayed as an ElevatedButton (typically used for Confirm).
+/// [context] - The build context required to show the dialog
+/// [title] - The title text displayed in bold
+/// [description] - The description text displayed in smaller, greyish color
+/// [button1Text] - Text for the first button (default: 'Confirm')
+/// [button2Text] - Text for the second button (default: 'Cancel')
+/// [button1Callback] - Optional callback for the first button
+/// [button2Callback] - Optional callback for the second button
 /// 
-/// Example usage:
-/// ```dart
-/// showConfirmationDialog(
-///   context: context,
-///   title: 'Delete Property',
-///   description: 'Are you sure you want to delete this property?',
-///   button1Text: 'Cancel',
-///   button2Text: 'Delete',
-///   button2Callback: () {
-///     deleteProperty(propertyId);
-///   },
-/// );
-/// ```
+/// When a button is pressed, the dialog is closed first, then the respective
+/// callback is triggered if provided. If no callback is provided, the button
+/// will only close the dialog.
 void showConfirmationDialog({
   required BuildContext context,
   required String title,
@@ -41,11 +36,11 @@ void showConfirmationDialog({
           description,
           style: TextStyle(
             fontSize: 14,
-            color: Colors.grey[700],
+            color: Colors.grey[600],
           ),
         ),
         actions: [
-          // Button 1 (TextButton - typically Cancel)
+          // Button 1 (Cancel) - TextButton
           TextButton(
             onPressed: () {
               Navigator.pop(dialogContext);
@@ -55,7 +50,7 @@ void showConfirmationDialog({
             },
             child: Text(button1Text),
           ),
-          // Button 2 (ElevatedButton - typically Confirm)
+          // Button 2 (Confirm/Action) - ElevatedButton
           ElevatedButton(
             onPressed: () {
               Navigator.pop(dialogContext);
