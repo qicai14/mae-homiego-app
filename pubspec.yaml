@@ -16,6 +16,10 @@ dependencies:
   flutter:
     sdk: flutter
 
+  google_maps_flutter: ^2.6.1
+  geocoding: ^3.0.0
+  image_picker: ^1.1.2
+
   # Your existing icon package
   cupertino_icons: ^1.0.8
 
