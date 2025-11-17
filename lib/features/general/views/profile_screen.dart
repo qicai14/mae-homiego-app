@@ -8,6 +8,8 @@ import 'package:homiego/widgets/profile_avatar.dart';
 import 'package:homiego/features/tenant/views/activity_history_screen.dart';
 import 'package:homiego/features/tenant/views/my_bookings_screen.dart';
 import 'package:homiego/features/general/views/verify_account_screen.dart';
+import 'package:homiego/features/homeowner/views/host_verification_screen.dart';
+import 'package:homiego/features/homeowner/views/property_rental_history_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -405,7 +407,54 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                   ],
                 ],
-                // Verify Account (only for unverified tenants)
+                // Account Settings Section (only for homeowners)
+                if (profile?.role == UserRole.homeowner) ...[
+                  const SizedBox(height: 32),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Account Settings',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                      ),
+                    ),
+                  ),
+                  // Verify Your Account (only for unverified homeowners)
+                  if (!(profile?.isVerified ?? true))
+                    _buildAccountSettingItem(
+                      context: context,
+                      title: 'Verify Your Account',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HostVerificationScreen(),
+                          ),
+                        ).then((_) {
+                          // Refresh profile after returning from verification screen
+                          ref.invalidate(authNotifierProvider);
+                        });
+                      },
+                    ),
+                  // View Property Rental History
+                  _buildAccountSettingItem(
+                    context: context,
+                    title: 'View Property Rental History',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const PropertyRentalHistoryScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
 
                 // Logout Button
                 _buildAccountSettingItem(

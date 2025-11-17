@@ -91,7 +91,7 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        backgroundColor: Colors.white.withOpacity(0.3),
+                        backgroundColor: Colors.blue.shade700,
                       ),
                       const SizedBox(width: 8),
                       Chip(

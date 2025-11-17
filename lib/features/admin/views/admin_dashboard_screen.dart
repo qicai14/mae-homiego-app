@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:homiego/core/providers/auth_providers.dart';
 import 'package:homiego/features/admin/providers/admin_providers.dart';
 import 'package:homiego/features/admin/views/manage_listing_screen.dart';
 import 'package:homiego/features/admin/views/manage_user_screen.dart';
 import 'package:homiego/features/admin/views/fraud_detection_screen.dart';
+import 'package:homiego/features/general/views/profile_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -22,6 +22,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     const ManageListingScreen(),
     const ManageUserScreen(),
     const FraudDetectionScreen(),
+    const ProfileScreen(),
   ];
 
   void changeTab(int index) {
@@ -30,51 +31,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     });
   }
 
-  void _showLogoutConfirmation(BuildContext context, WidgetRef ref) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.logout, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Confirm Logout'),
-          ],
-        ),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ref.read(authNotifierProvider.notifier).signOut();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout',
-            onPressed: () => _showLogoutConfirmation(context, ref),
-          )
-        ],
       ),
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
@@ -91,15 +52,19 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.home_work),
-            label: 'Manage Listing',
+            label: 'Listings',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.people),
-            label: 'Manage User',
+            label: 'Users',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.shield),
-            label: 'Fraud Detection',
+            label: 'Anti-Fraud',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Account',
           ),
         ],
         type: BottomNavigationBarType.fixed,

@@ -29,6 +29,9 @@ class NotificationScreen extends ConsumerStatefulWidget {
 }
 
 class _NotificationScreenState extends ConsumerState<NotificationScreen> {
+  Set<int> _seenNotificationIds = {};
+  bool _hasInitialized = false;
+
   Future<void> _refreshNotifications(String userId) async {
     print('NotificationScreen: Refreshing notifications for user $userId');
     try {
@@ -38,6 +41,65 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     } catch (e) {
       print('NotificationScreen: Error refreshing notifications: $e');
     }
+  }
+
+  void _checkForNewReviewNotifications(
+      List<models.Notification> notifications, String userId) {
+    // On first load, just track existing notifications
+    if (!_hasInitialized) {
+      _seenNotificationIds = notifications.map((n) => n.id).toSet();
+      _hasInitialized = true;
+      return;
+    }
+
+    // Find new review notifications that we haven't seen
+    final newReviewNotifications = notifications.where((notification) {
+      return notification.type == models.NotificationAction.review &&
+          !_seenNotificationIds.contains(notification.id);
+    }).toList();
+
+    // Show snackbar for each new review notification
+    if (newReviewNotifications.isNotEmpty && mounted) {
+      for (final notification in newReviewNotifications) {
+        // Add to seen set
+        _seenNotificationIds.add(notification.id);
+
+        // Show snackbar prompting user to leave a review
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Your booking has ended! Please leave a review.',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.blue.shade700,
+                action: SnackBarAction(
+                  label: 'Review',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    // Navigate to review by tapping the notification
+                    _handleNotificationTap(notification, userId);
+                  },
+                ),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+        });
+      }
+    }
+
+    // Update seen notifications set
+    _seenNotificationIds = notifications.map((n) => n.id).toSet();
   }
 
   Future<void> _handleMarkAllAsRead(String userId) async {
@@ -154,11 +216,11 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
           }
         }
 
-        if (!mounted || booking == null) {
-          showSnackBar(context, 'Error loading booking', isError: true);
+        if (!mounted) {
           return;
         }
-        
+
+        // After fallback logic, booking should always be non-null, but property might be null
         if (property == null) {
           showSnackBar(context, 'Error loading property', isError: true);
           return;
@@ -312,6 +374,16 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
 
           final notificationsAsync = ref.watch(notificationsProvider(userId));
 
+          // Listen for new review notifications and show snackbar
+          ref.listen(
+            notificationsProvider(userId),
+            (previous, next) {
+              next.whenData((notifications) {
+                _checkForNewReviewNotifications(notifications, userId);
+              });
+            },
+          );
+
           return RefreshIndicator(
             onRefresh: () => _refreshNotifications(userId),
             child: notificationsAsync.when(
@@ -335,6 +407,9 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
               },
               data: (notifications) {
                 print('NotificationScreen: Received ${notifications.length} notifications');
+                
+                // Check for new review notifications when data is received
+                _checkForNewReviewNotifications(notifications, userId);
                 if (notifications.isEmpty) {
                   return const Center(
                     child: Column(

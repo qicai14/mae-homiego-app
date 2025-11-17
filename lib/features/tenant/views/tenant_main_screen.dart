@@ -4,6 +4,7 @@ import 'package:homiego/features/tenant/views/inbox_screen.dart';
 import 'package:homiego/features/tenant/views/tenant_home_screen.dart';
 import 'package:homiego/features/tenant/views/wishlist_screen.dart';
 import 'package:homiego/widgets/booking_monitor_wrapper.dart';
+import 'package:homiego/widgets/notification_snackbar_listener.dart';
 
 class TenantMainScreen extends StatefulWidget {
   const TenantMainScreen({super.key});
@@ -39,14 +40,15 @@ class _TenantMainScreenState extends State<TenantMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BookingMonitorWrapper(
-      child: Scaffold(
-        // IndexedStack keeps the state of the screens when switching tabs
-        body: IndexedStack(
-          index: _selectedIndex,
-          children: _widgetOptions,
-        ),
-      bottomNavigationBar: BottomNavigationBar(
+    return NotificationSnackbarListener(
+      child: BookingMonitorWrapper(
+        child: Scaffold(
+          // IndexedStack keeps the state of the screens when switching tabs
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: _widgetOptions,
+          ),
+          bottomNavigationBar: BottomNavigationBar(
         // These items match your wireframe (Figure 3)
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
@@ -58,9 +60,10 @@ class _TenantMainScreenState extends State<TenantMainScreen> {
         selectedItemColor: Theme.of(context).colorScheme.secondary,
         unselectedItemColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
         onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, // Good for 4+ items
-        showUnselectedLabels: true,
-      ),
+          type: BottomNavigationBarType.fixed, // Good for 4+ items
+          showUnselectedLabels: true,
+        ),
+        ),
       ),
     );
   }

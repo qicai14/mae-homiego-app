@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/features/homeowner/providers/booking_providers.dart';
 import 'package:homiego/core/services/supabase_client.dart';
+import 'package:homiego/core/services/notification_service.dart';
+import 'package:homiego/core/services/property_service.dart';
 import 'package:homiego/core/utils/confirmation_dialog.dart';
 import 'package:homiego/core/utils/show_snackbar.dart';
 
@@ -254,10 +256,42 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button2Callback: () async {
         ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
+          // Get booking details to fetch tenant_id and property info
+          final bookingResponse = await supabase
+              .from('bookings')
+              .select()
+              .eq('id', bookingId)
+              .maybeSingle();
+
+          if (bookingResponse == null) {
+            if (context.mounted) {
+              showSnackBar(context, 'Booking not found', isError: true);
+              ref.read(_updatingBookingProvider.notifier).state = null;
+            }
+            return;
+          }
+
+          final tenantId = bookingResponse['tenant_id'] as String;
+          final propertyId = bookingResponse['property_id'] as int;
+
+          // Update booking status
           await supabase
               .from('bookings')
               .update({'status': 'confirmed'})
               .eq('id', bookingId);
+
+          // Get property details for notification
+          final property = await PropertyService.getPropertyById(propertyId);
+          final propertyTitle = property?.title ?? 'the property';
+
+          // Create notification for tenant
+          await NotificationService.createNotification(
+            userId: tenantId,
+            title: 'Booking Accepted - $propertyTitle',
+            description: 'Great news! Your booking request for $propertyTitle has been accepted.',
+            type: null, // General notification type
+            bookingId: bookingId,
+          );
 
           if (context.mounted) {
             ref.invalidate(homeownerBookingsStreamProvider);
@@ -288,10 +322,42 @@ class HomeownerInboxScreen extends ConsumerWidget {
       button2Callback: () async {
         ref.read(_updatingBookingProvider.notifier).state = bookingId;
         try {
+          // Get booking details to fetch tenant_id and property info
+          final bookingResponse = await supabase
+              .from('bookings')
+              .select()
+              .eq('id', bookingId)
+              .maybeSingle();
+
+          if (bookingResponse == null) {
+            if (context.mounted) {
+              showSnackBar(context, 'Booking not found', isError: true);
+              ref.read(_updatingBookingProvider.notifier).state = null;
+            }
+            return;
+          }
+
+          final tenantId = bookingResponse['tenant_id'] as String;
+          final propertyId = bookingResponse['property_id'] as int;
+
+          // Update booking status
           await supabase
               .from('bookings')
               .update({'status': 'declined'})
               .eq('id', bookingId);
+
+          // Get property details for notification
+          final property = await PropertyService.getPropertyById(propertyId);
+          final propertyTitle = property?.title ?? 'the property';
+
+          // Create notification for tenant
+          await NotificationService.createNotification(
+            userId: tenantId,
+            title: 'Booking Declined - $propertyTitle',
+            description: 'Unfortunately, your booking request for $propertyTitle has been declined.',
+            type: null, // General notification type
+            bookingId: bookingId,
+          );
 
           if (context.mounted) {
             // --- ADDED: Manually invalidate the stream to force refresh ---

@@ -109,8 +109,8 @@ class AppConstants {
   static const int checkInMinute = 0;
 
   /// Standard check-out time (12:00 PM)
-  static const int checkOutHour = 12;
-  static const int checkOutMinute = 0;
+  static const int checkOutHour = 13;
+  static const int checkOutMinute = 50;
 
   /// Cleanup/rest period in days (1 day between checkout and next checkin)
   static const int cleaningPeriodDays = 1;

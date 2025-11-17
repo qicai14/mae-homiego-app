@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:homiego/features/homeowner/views/dashboard_screen.dart';
-import 'package:homiego/features/homeowner/views/homeowner_account_screen.dart';
+import 'package:homiego/features/general/views/profile_screen.dart';
 import 'package:homiego/features/homeowner/views/homeowner_inbox_screen.dart';
 import 'package:homiego/features/homeowner/views/my_listings_screen.dart';
+import 'package:homiego/widgets/notification_snackbar_listener.dart';
 
 
 final homeownerNavIndexProvider = StateProvider<int>((ref) => 0);
@@ -23,19 +24,20 @@ class _HomeownerMainScreenState extends ConsumerState<HomeownerMainScreen> {
     HomeownerDashboardScreen(), 
     MyListingsScreen(), 
     HomeownerInboxScreen(), 
-    HomeownerAccountScreen(), 
+    ProfileScreen(), 
   ];
 
   @override
   Widget build(BuildContext context) {
     final selectedIndex = ref.watch(homeownerNavIndexProvider);
 
-    return Scaffold(
-      body: IndexedStack(
-        index: selectedIndex,
-        children: _widgetOptions,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
+    return NotificationSnackbarListener(
+      child: Scaffold(
+        body: IndexedStack(
+          index: selectedIndex,
+          children: _widgetOptions,
+        ),
+        bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
               icon: Icon(Icons.dashboard_outlined),
@@ -62,6 +64,7 @@ class _HomeownerMainScreenState extends ConsumerState<HomeownerMainScreen> {
             ref.read(homeownerNavIndexProvider.notifier).state = index,
         type: BottomNavigationBarType.fixed,
         showUnselectedLabels: true,
+      ),
       ),
     );
   }
