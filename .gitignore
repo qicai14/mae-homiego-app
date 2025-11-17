@@ -48,3 +48,4 @@ app.*.map.json
 .env
 /.cursor/rules
 /.design
+pubspec.lock

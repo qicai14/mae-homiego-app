@@ -16,6 +16,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+    
+
   google_maps_flutter: ^2.6.1
   geocoding: ^3.0.0
   image_picker: ^1.1.2
@@ -33,6 +35,9 @@ dependencies:
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+
+  integration_test:
     sdk: flutter
 
   # Your existing lints package
