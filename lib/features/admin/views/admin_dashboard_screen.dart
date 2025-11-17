@@ -6,6 +6,11 @@ import 'package:homiego/features/admin/views/manage_user_screen.dart';
 import 'package:homiego/features/admin/views/fraud_detection_screen.dart';
 import 'package:homiego/features/general/views/profile_screen.dart';
 
+/// Main admin dashboard screen providing navigation and overview statistics.
+/// 
+/// Displays a bottom navigation bar with tabs for Dashboard, Listings,
+/// Users, Anti-Fraud, and Account management. The dashboard tab shows
+/// rental statistics, booking analytics, and fraud detection summary.
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -25,6 +30,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     const ProfileScreen(),
   ];
 
+  /// Changes the active tab in the bottom navigation bar.
+  /// 
+  /// Parameters:
+  /// - `index`: The index of the tab to switch to (0-4)
   void changeTab(int index) {
     setState(() {
       _currentIndex = index;
@@ -73,6 +82,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   }
 }
 
+/// Dashboard tab widget displaying rental statistics, analytics, and fraud summary.
+/// 
+/// Shows comprehensive overview of:
+/// - Rental property statistics (active/inactive counts)
+/// - Property performance analytics
+/// - Booking statistics and revenue
+/// - Fraud detection overview
 class _DashboardTab extends ConsumerWidget {
   const _DashboardTab();
 
@@ -154,6 +170,10 @@ class _DashboardTab extends ConsumerWidget {
   }
 }
 
+/// Widget displaying rental statistics in card format.
+/// 
+/// Shows inactive and active property counts with visual indicators
+/// and color-coded cards for easy identification.
 class _StatisticsCards extends StatelessWidget {
   final RentalStatistics stats;
 
@@ -253,6 +273,10 @@ class _StatisticsCards extends StatelessWidget {
   }
 }
 
+/// Widget displaying property performance analytics.
+/// 
+/// Shows property utilization metrics including total properties,
+/// active/inactive rates, and a visual progress bar representation.
 class _AnalyticsDashboard extends ConsumerWidget {
   const _AnalyticsDashboard();
 
@@ -486,6 +510,11 @@ class _ProgressBar extends StatelessWidget {
   }
 }
 
+/// Widget displaying comprehensive booking analytics.
+/// 
+/// Shows booking status distribution (pending, confirmed, declined),
+/// total revenue, confirmation rates, and payment collection metrics
+/// with visual progress indicators.
 class _BookingsAnalyticsDashboard extends ConsumerWidget {
   const _BookingsAnalyticsDashboard();
 
@@ -681,6 +710,11 @@ class _BookingStatusCard extends StatelessWidget {
   }
 }
 
+/// Widget displaying fraud detection system overview.
+/// 
+/// Shows overall risk score, flagged users/properties counts, and
+/// provides navigation to the detailed fraud detection screen.
+/// Displays color-coded risk indicators (red/orange/green).
 class _FraudDetectionSummary extends ConsumerWidget {
   const _FraudDetectionSummary();
 

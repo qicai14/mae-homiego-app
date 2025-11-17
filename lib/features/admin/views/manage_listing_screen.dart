@@ -6,6 +6,11 @@ import 'package:homiego/features/admin/providers/admin_providers.dart';
 import 'package:homiego/features/admin/views/property_detail_screen.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 
+/// Screen for managing property listings with tabbed interface.
+/// 
+/// Provides two tabs:
+/// - View All: Browse and search all properties in the system
+/// - Verify/Approve: Review and approve/reject pending property listings
 class ManageListingScreen extends ConsumerStatefulWidget {
   const ManageListingScreen({super.key});
 
@@ -76,6 +81,15 @@ class _ViewAllTab extends ConsumerWidget {
     required this.onSearchChanged,
   });
 
+  /// Filters properties based on the current search query.
+  /// 
+  /// Searches through property title, address, description, and property type.
+  /// Returns all properties if search query is empty.
+  /// 
+  /// Parameters:
+  /// - `properties`: List of properties to filter
+  /// 
+  /// Returns filtered list of properties matching the search criteria.
   List<Property> _filterProperties(List<Property> properties) {
     if (searchQuery.isEmpty) return properties;
     
@@ -275,6 +289,11 @@ class _PropertyCardState extends ConsumerState<_PropertyCard> {
     _loadFirstImage();
   }
 
+  /// Loads the first image for a property from the database.
+  /// 
+  /// Queries the property_images table to get the primary image,
+  /// then generates the public URL from Supabase storage or uses
+  /// the URL directly if it's already a full URL.
   Future<void> _loadFirstImage() async {
     debugPrint('=== ManageListingScreen: Loading first image for property ID: ${widget.property.id} ===');
     try {
@@ -633,6 +652,11 @@ class _PropertyVerificationCard extends ConsumerWidget {
     );
   }
 
+  /// Handles the approval of a pending property listing.
+  /// 
+  /// Shows a confirmation dialog, then updates the property status
+  /// to 'approved' in the database. Invalidates related providers
+  /// and shows success/error messages.
   void _handleApprove(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -719,6 +743,11 @@ class _PropertyVerificationCard extends ConsumerWidget {
     }
   }
 
+  /// Handles the rejection of a pending property listing.
+  /// 
+  /// Shows a confirmation dialog, then updates the property status
+  /// to 'rejected' in the database. Invalidates related providers
+  /// and shows success/error messages.
   void _handleReject(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,

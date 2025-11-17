@@ -4,8 +4,22 @@ import 'package:homiego/core/models/property.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 
+/// Service class for detecting and analyzing fraud patterns in the system.
+/// 
+/// Provides static methods to analyze user behavior, booking patterns, and
+/// property listings to identify potential fraudulent activities. Calculates
+/// fraud risk scores and generates fraud flags for admin review.
 class FraudDetectionService {
-  /// Detect excessive cancellations
+  /// Detects users with excessive booking cancellations within a 24-hour window.
+  /// 
+  /// Flags users who have cancelled more than 3 bookings in the last 24 hours,
+  /// which may indicate fraudulent behavior or abuse of the booking system.
+  /// 
+  /// Parameters:
+  /// - `bookings`: List of all bookings to analyze
+  /// - `userId`: The user ID to check for excessive cancellations
+  /// 
+  /// Returns a list of [FraudFlag] objects if suspicious activity is detected.
   static List<FraudFlag> detectExcessiveCancellations(
     List<Booking> bookings,
     String userId,
@@ -37,7 +51,15 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect multiple accounts from email
+  /// Detects potential multiple accounts created with the same email address.
+  /// 
+  /// Note: Full implementation requires server-side verification via Supabase
+  /// Edge Function, as client-side access to auth.users table is restricted.
+  /// 
+  /// Parameters:
+  /// - `email`: The email address to check for duplicate accounts
+  /// 
+  /// Returns a list of [FraudFlag] objects if multiple accounts are detected.
   static Future<List<FraudFlag>> detectMultipleAccountsFromEmail(
     String email,
   ) async {
@@ -63,7 +85,17 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect high-value anomalies
+  /// Detects booking price anomalies that are significantly higher than average.
+  /// 
+  /// Flags bookings where the price is more than 3x the system average, which
+  /// may indicate price manipulation or fraudulent listing practices.
+  /// 
+  /// Parameters:
+  /// - `allBookings`: All bookings in the system for average calculation
+  /// - `userBookings`: Bookings specific to the user being analyzed
+  /// - `userId`: The user ID to check for high-value anomalies
+  /// 
+  /// Returns a list of [FraudFlag] objects if suspicious pricing is detected.
   static List<FraudFlag> detectHighValueAnomalies(
     List<Booking> allBookings,
     List<Booking> userBookings,
@@ -107,7 +139,16 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect rapid bookings
+  /// Detects users making multiple bookings in rapid succession.
+  /// 
+  /// Flags users who create bookings within 5 minutes of each other, which
+  /// may indicate automated booking attempts or fraudulent activity.
+  /// 
+  /// Parameters:
+  /// - `bookings`: List of all bookings to analyze
+  /// - `userId`: The user ID to check for rapid booking patterns
+  /// 
+  /// Returns a list of [FraudFlag] objects if rapid booking pattern is detected.
   static List<FraudFlag> detectRapidBookings(
     List<Booking> bookings,
     String userId,
@@ -148,7 +189,18 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Calculate user fraud score (0-100)
+  /// Calculates a fraud risk score for a user based on detected fraud flags.
+  /// 
+  /// Score weights:
+  /// - Excessive cancellations: +30 points
+  /// - Multiple accounts: +40 points
+  /// - High value anomaly: +25 points
+  /// - Rapid bookings: +20 points
+  /// 
+  /// Parameters:
+  /// - `flags`: List of fraud flags detected for the user
+  /// 
+  /// Returns a score from 0-100, where higher scores indicate higher fraud risk.
   static double calculateUserFraudScore(List<FraudFlag> flags) {
     if (flags.isEmpty) return 0.0;
 
@@ -173,7 +225,17 @@ class FraudDetectionService {
     return score > 100 ? 100.0 : score;
   }
 
-  /// Calculate property fraud score (0-100)
+  /// Calculates a fraud risk score for a property based on detected fraud flags.
+  /// 
+  /// Score weights:
+  /// - High value anomaly: +35 points
+  /// - Rapid bookings: +25 points
+  /// - Other flags: +15 points each
+  /// 
+  /// Parameters:
+  /// - `flags`: List of fraud flags detected for the property
+  /// 
+  /// Returns a score from 0-100, where higher scores indicate higher fraud risk.
   static double calculatePropertyFraudScore(List<FraudFlag> flags) {
     if (flags.isEmpty) return 0.0;
 
@@ -194,7 +256,13 @@ class FraudDetectionService {
     return score > 100 ? 100.0 : score;
   }
 
-  /// Get all bookings
+  /// Fetches all bookings from the database for fraud analysis.
+  /// 
+  /// Retrieves bookings ordered by creation date (newest first) to enable
+  /// chronological analysis of booking patterns.
+  /// 
+  /// Returns a list of [Booking] objects.
+  /// Throws an exception if the database query fails.
   static Future<List<Booking>> getAllBookings() async {
     try {
       final response = await supabase
@@ -211,7 +279,15 @@ class FraudDetectionService {
     }
   }
 
-  /// Get user email (requires Edge Function)
+  /// Retrieves a user's email address from the authentication system.
+  /// 
+  /// Note: This requires a Supabase Edge Function as client-side access to
+  /// auth.users table is restricted. Currently returns null.
+  /// 
+  /// Parameters:
+  /// - `userId`: The user ID to get the email for
+  /// 
+  /// Returns the user's email address, or null if unavailable.
   static Future<String?> getUserEmail(String userId) async {
     try {
       return null;
@@ -220,7 +296,17 @@ class FraudDetectionService {
     }
   }
 
-  /// Analyze all users
+  /// Analyzes all users in the system for potential fraud indicators.
+  /// 
+  /// Performs comprehensive fraud detection analysis on all users by:
+  /// - Detecting excessive cancellations
+  /// - Identifying high-value booking anomalies
+  /// - Detecting rapid booking patterns
+  /// - Calculating fraud risk scores
+  /// 
+  /// Returns a list of [UserFraudScore] objects sorted by fraud score
+  /// (highest risk first). Only includes users with detected flags or
+  /// non-zero fraud scores.
   static Future<List<UserFraudScore>> analyzeAllUsers() async {
     final bookings = await getAllBookings();
     final userScores = <UserFraudScore>[];
@@ -278,7 +364,16 @@ class FraudDetectionService {
     return userScores;
   }
 
-  /// Analyze all properties
+  /// Analyzes all properties in the system for potential fraud indicators.
+  /// 
+  /// Performs comprehensive fraud detection analysis on all properties by:
+  /// - Detecting pricing anomalies (bookings significantly above average)
+  /// - Identifying rapid booking patterns on properties
+  /// - Calculating fraud risk scores
+  /// 
+  /// Returns a list of [PropertyFraudScore] objects sorted by fraud score
+  /// (highest risk first). Only includes properties with detected flags or
+  /// non-zero fraud scores.
   static Future<List<PropertyFraudScore>> analyzeAllProperties() async {
     final bookings = await getAllBookings();
     final propertyScores = <PropertyFraudScore>[];
@@ -387,7 +482,15 @@ class FraudDetectionService {
     return propertyScores;
   }
 
-  /// Get system fraud summary
+  /// Generates a comprehensive system-wide fraud detection summary.
+  /// 
+  /// Aggregates fraud analysis data from all users and properties to provide:
+  /// - Overall system fraud risk score
+  /// - Count of flagged users and properties
+  /// - Top 10 most suspicious users and properties
+  /// - Distribution of fraud flag types across the system
+  /// 
+  /// Returns a [SystemFraudSummary] object with all aggregated metrics.
   static Future<SystemFraudSummary> getSystemFraudSummary() async {
     final userScores = await analyzeAllUsers();
     final propertyScores = await analyzeAllProperties();

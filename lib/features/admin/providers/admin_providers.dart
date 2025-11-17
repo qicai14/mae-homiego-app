@@ -5,9 +5,16 @@ import 'package:homiego/core/models/fraud_detection.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/features/admin/services/fraud_detection_service.dart';
 
-// Rental statistics
+/// Represents rental property statistics for admin dashboard.
+/// 
+/// Tracks the count of active and inactive properties in the system.
+/// Active properties are those with 'approved' status, while inactive
+/// properties include those with 'pending' or 'rejected' status.
 class RentalStatistics {
+  /// Number of inactive properties (pending or rejected status)
   final int inactiveProperties;
+  
+  /// Number of active properties (approved status)
   final int activeProperties;
 
   RentalStatistics({
@@ -16,15 +23,34 @@ class RentalStatistics {
   });
 }
 
-// Booking statistics
+/// Represents booking statistics for admin dashboard.
+/// 
+/// Provides comprehensive booking metrics including counts by status
+/// (pending, confirmed, declined, cancelled) and payment information
+/// (paid/unpaid bookings and total revenue).
 class BookingStatistics {
+  /// Total number of bookings in the system
   final int totalBookings;
+  
+  /// Number of bookings with 'pending' status
   final int pendingBookings;
+  
+  /// Number of bookings with 'confirmed' status
   final int confirmedBookings;
+  
+  /// Number of bookings with 'declined' status
   final int declinedBookings;
+  
+  /// Number of bookings with 'cancelled' status
   final int cancelledBookings;
+  
+  /// Total revenue from all paid bookings
   final double totalRevenue;
+  
+  /// Number of bookings with 'paid' payment status
   final int paidBookings;
+  
+  /// Number of bookings with 'unpaid' payment status
   final int unpaidBookings;
 
   BookingStatistics({
@@ -39,7 +65,13 @@ class BookingStatistics {
   });
 }
 
-// Rental statistics provider
+/// Provider that fetches rental property statistics from the database.
+/// 
+/// Retrieves all properties and categorizes them into active (approved)
+/// and inactive (pending/rejected) counts. Returns a [RentalStatistics]
+/// object with the aggregated data.
+/// 
+/// Throws an exception if the database query fails.
 final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
   try {
     final propertiesResponse = await supabase
@@ -73,7 +105,16 @@ final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
 });
 
 
-// Booking statistics provider
+/// Provider that fetches comprehensive booking statistics from the database.
+/// 
+/// Retrieves all bookings and calculates:
+/// - Total booking count
+/// - Bookings grouped by status (pending, confirmed, declined, cancelled)
+/// - Payment statistics (paid/unpaid counts)
+/// - Total revenue from paid bookings
+/// 
+/// Returns a [BookingStatistics] object with all aggregated metrics.
+/// Throws an exception if the database query fails.
 final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async {
   try {
     final session = supabase.auth.currentSession;
@@ -143,7 +184,13 @@ final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async 
   }
 });
 
-// Pending properties provider
+/// Provider that fetches all properties with 'pending' status.
+/// 
+/// Retrieves properties awaiting admin approval, ordered by creation date
+/// (newest first). Used by admin to review and approve/reject property listings.
+/// 
+/// Returns a list of [Property] objects.
+/// Throws an exception if the database query fails.
 final pendingPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   try {
     final response = await supabase
@@ -161,7 +208,14 @@ final pendingPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   }
 });
 
-// Unverified profiles provider
+/// Provider that fetches all unverified homeowner profiles.
+/// 
+/// Retrieves homeowner profiles that have not been verified by admin,
+/// ordered by creation date (newest first). Used by admin to review
+/// and verify homeowner accounts.
+/// 
+/// Returns a list of [Profile] objects.
+/// Throws an exception if the database query fails.
 final unverifiedProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   try {
     final response = await supabase
@@ -180,7 +234,18 @@ final unverifiedProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   }
 });
 
-// Update property status provider
+/// Provider that updates a property's status (approve/reject/pending).
+/// 
+/// Parameters:
+/// - `property_id` (int): The ID of the property to update
+/// - `status` (String): The new status ('approved', 'rejected', or 'pending')
+/// 
+/// Verifies the property exists before updating, then updates the status
+/// in the database. Invalidates related providers after successful update.
+/// 
+/// Returns `true` if the update was successful.
+/// Throws an exception if the property doesn't exist, update fails, or
+/// RLS policies block the operation.
 final updatePropertyStatusProvider =
     FutureProvider.family<bool, Map<String, dynamic>>((ref, params) async {
   try {
@@ -246,7 +311,19 @@ final updatePropertyStatusProvider =
   }
 });
 
-// Update profile verification provider
+/// Provider that updates a profile's verification status.
+/// 
+/// Parameters:
+/// - `profile_id` (String): The ID of the profile to update
+/// - `is_verified` (bool): The new verification status (true/false)
+/// 
+/// Verifies the profile exists before updating, then updates the
+/// `is_verified` field in the database. Invalidates related providers
+/// after successful update.
+/// 
+/// Returns `true` if the update was successful.
+/// Throws an exception if the profile doesn't exist, update fails, or
+/// RLS policies block the operation.
 final updateProfileVerificationProvider =
     FutureProvider.family<bool, Map<String, dynamic>>((ref, params) async {
   try {
@@ -311,7 +388,14 @@ final updateProfileVerificationProvider =
   }
 });
 
-// System fraud summary provider
+/// Provider that fetches system-wide fraud detection summary.
+/// 
+/// Retrieves aggregated fraud statistics across all users and properties
+/// in the system. Uses the [FraudDetectionService] to analyze and
+/// summarize potential fraud indicators.
+/// 
+/// Returns a [SystemFraudSummary] object with overall fraud metrics.
+/// Throws an exception if the fraud analysis fails.
 final systemFraudSummaryProvider = FutureProvider<SystemFraudSummary>((ref) async {
   try {
     return await FraudDetectionService.getSystemFraudSummary();
@@ -320,7 +404,14 @@ final systemFraudSummaryProvider = FutureProvider<SystemFraudSummary>((ref) asyn
   }
 });
 
-// User fraud scores provider
+/// Provider that fetches fraud scores for all users in the system.
+/// 
+/// Analyzes all user accounts using the [FraudDetectionService] to
+/// calculate fraud risk scores based on various indicators (booking
+/// patterns, payment behavior, profile completeness, etc.).
+/// 
+/// Returns a list of [UserFraudScore] objects, one for each user.
+/// Throws an exception if the fraud analysis fails.
 final userFraudScoresProvider = FutureProvider<List<UserFraudScore>>((ref) async {
   try {
     return await FraudDetectionService.analyzeAllUsers();
@@ -329,7 +420,14 @@ final userFraudScoresProvider = FutureProvider<List<UserFraudScore>>((ref) async
   }
 });
 
-// Property fraud scores provider
+/// Provider that fetches fraud scores for all properties in the system.
+/// 
+/// Analyzes all property listings using the [FraudDetectionService] to
+/// calculate fraud risk scores based on various indicators (pricing
+/// anomalies, description quality, image authenticity, owner verification, etc.).
+/// 
+/// Returns a list of [PropertyFraudScore] objects, one for each property.
+/// Throws an exception if the fraud analysis fails.
 final propertyFraudScoresProvider = FutureProvider<List<PropertyFraudScore>>((ref) async {
   try {
     return await FraudDetectionService.analyzeAllProperties();
@@ -338,7 +436,14 @@ final propertyFraudScoresProvider = FutureProvider<List<PropertyFraudScore>>((re
   }
 });
 
-// All properties provider
+/// Provider that fetches all properties in the system.
+/// 
+/// Retrieves every property regardless of status, ordered by creation date
+/// (newest first). Used by admin for comprehensive property management
+/// and oversight.
+/// 
+/// Returns a list of [Property] objects.
+/// Throws an exception if the database query fails.
 final allPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   try {
     final response = await supabase
@@ -355,7 +460,14 @@ final allPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   }
 });
 
-// All profiles provider (excluding admin)
+/// Provider that fetches all user profiles excluding admin accounts.
+/// 
+/// Retrieves all homeowner and tenant profiles, ordered by creation date
+/// (newest first). Used by admin for user management and oversight.
+/// Admin profiles are excluded from the results.
+/// 
+/// Returns a list of [Profile] objects.
+/// Throws an exception if the database query fails.
 final allProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   try {
     final response = await supabase
