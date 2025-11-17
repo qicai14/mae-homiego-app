@@ -119,47 +119,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 40),
-                  // Email Field
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined)
+                  // Email field
+                  Semantics(
+                    label: 'login_email',
+                    child: TextField(
+                      key: const ValueKey('login_email'),
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined),
                       ),
-                    keyboardType: TextInputType.emailAddress,
-                    textInputAction: TextInputAction.next,
-                    enabled: !isLoading, // Disable when loading
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      enabled: !isLoading,
+                    ),
                   ),
+
                   const SizedBox(height: 16),
-                  // Password Field
-                  TextField(
-                    controller: _passwordController,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                       prefixIcon: Icon(Icons.lock_outline)
-                       ),
-                    obscureText: true,
-                    textInputAction: TextInputAction.done,
-                    enabled: !isLoading, // Disable when loading
-                    onSubmitted: (_) { // Allow login on keyboard done action
-                      if (!isLoading) login();
-                    },
+
+                  // Password field
+                  Semantics(
+                    label: 'login_password',
+                    child: TextField(
+                      key: const ValueKey('login_password'),
+                      controller: _passwordController,
+                      decoration: const InputDecoration(
+                        labelText: 'Password',
+                        prefixIcon: Icon(Icons.lock_outline),
+                      ),
+                      obscureText: true,
+                      textInputAction: TextInputAction.done,
+                      enabled: !isLoading,
+                      onSubmitted: (_) {
+                        if (!isLoading) login();
+                      },
+                    ),
                   ),
+
                   const SizedBox(height: 32),
-                  // Login Button
-                  ElevatedButton(
-                    onPressed: isLoading ? null : login, // Disable button when loading
-                    child: isLoading
-                        ? const SizedBox( // Show loading indicator inside button
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(
-                              color: Colors.white, strokeWidth: 3,
-                            ),
-                          )
-                        : const Text('Log In'),
+
+                  // Login button
+                  Semantics(
+                    label: 'login_button',
+                    child: ElevatedButton(
+                      key: const ValueKey('login_button'),
+                      onPressed: isLoading ? null : login,
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
+                            )
+                          : const Text('Log In'),
+                    ),
                   ),
-                  const SizedBox(height: 16),
                    // Optional: Forgot Password Button
                    // TextButton(
                    //   onPressed: isLoading ? null : () { /* TODO: Navigate to Forgot Password */ },
