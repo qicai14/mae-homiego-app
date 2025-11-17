@@ -4,6 +4,10 @@ import 'package:homiego/core/models/property.dart';
 import 'package:homiego/core/models/property_image.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 
+/// Screen displaying detailed information about a property.
+/// 
+/// Shows property images, details, pricing breakdown, amenities,
+/// and additional metadata. Used by admin for property review and management.
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   final Property property;
 
@@ -26,6 +30,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     _loadImages();
   }
 
+  /// Loads all images for the property from the database.
+  /// 
+  /// Queries the property_images table, orders by position, and
+  /// stores the images for display in a PageView widget.
   Future<void> _loadImages() async {
     debugPrint('=== PropertyDetailScreen: Loading images for property ID: ${widget.property.id} ===');
     try {
@@ -67,6 +75,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     }
   }
 
+  /// Generates a public URL for a property image from storage path.
+  /// 
+  /// Checks if the storage path is already a full URL (http/https),
+  /// otherwise generates a public URL from the Supabase storage bucket.
+  /// 
+  /// Parameters:
+  /// - `storagePath`: The storage path or URL of the image
+  /// 
+  /// Returns the public URL string for the image.
   String _getImageUrl(String storagePath) {
     // Get the public URL from Supabase storage
     try {

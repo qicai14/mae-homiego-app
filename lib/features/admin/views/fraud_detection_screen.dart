@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/fraud_detection.dart';
+import 'package:homiego/core/models/profile.dart';
+import 'package:homiego/core/services/property_service.dart';
+import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/features/admin/providers/admin_providers.dart';
+import 'package:homiego/features/admin/views/user_detail_screen.dart';
+import 'package:homiego/features/admin/views/property_detail_screen.dart';
 
+/// Screen displaying comprehensive fraud detection analysis.
+/// 
+/// Shows system-wide fraud summary, flagged users with detailed fraud flags,
+/// and flagged properties with risk scores. Provides refresh functionality
+/// to update fraud analysis data.
 class FraudDetectionScreen extends ConsumerWidget {
   const FraudDetectionScreen({super.key});
 
@@ -419,8 +429,42 @@ class _UserFraudCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    // Navigate to user details or show more info
-                    // You can implement navigation to user management screen
+                    // Fetch profile and navigate to user detail screen
+                    try {
+                      final response = await supabase
+                          .from('profiles')
+                          .select()
+                          .eq('id', score.userId)
+                          .maybeSingle();
+
+                      if (response != null && context.mounted) {
+                        final profile = Profile.fromMap(response);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserDetailScreen(profile: profile),
+                          ),
+                        );
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('User profile not found'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error loading user: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   icon: const Icon(Icons.person),
                   label: const Text('View User Details'),
@@ -543,8 +587,37 @@ class _PropertyFraudCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 ElevatedButton.icon(
                   onPressed: () async {
-                    // Navigate to property details or show more info
-                    // You can implement navigation to property management screen
+                    // Fetch property and navigate to property detail screen
+                    try {
+                      final property = await PropertyService.getPropertyById(score.propertyId);
+                      
+                      if (property != null && context.mounted) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PropertyDetailScreen(property: property),
+                          ),
+                        );
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Property not found'),
+                              backgroundColor: Colors.orange,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error loading property: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
                   },
                   icon: const Icon(Icons.home),
                   label: const Text('View Property Details'),

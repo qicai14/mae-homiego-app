@@ -5,6 +5,11 @@ import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/features/admin/providers/admin_providers.dart';
 import 'package:homiego/features/admin/views/user_detail_screen.dart';
 
+/// Screen for managing all users in the system.
+/// 
+/// Provides search functionality to filter users by name, contact number,
+/// location, bio, or role. Displays user cards with verification status
+/// and allows navigation to detailed user profiles.
 class ManageUserScreen extends ConsumerStatefulWidget {
   const ManageUserScreen({super.key});
 
@@ -24,6 +29,14 @@ class _ManageUserScreenState extends ConsumerState<ManageUserScreen> {
     super.dispose();
   }
 
+  /// Handles search query changes with debouncing.
+  /// 
+  /// Implements a 300ms debounce timer to avoid excessive filtering
+  /// while the user is typing. Updates the search query state when
+  /// the timer completes.
+  /// 
+  /// Parameters:
+  /// - `query`: The search query string
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
@@ -51,7 +64,15 @@ class _ManageUserScreenState extends ConsumerState<ManageUserScreen> {
   }
 }
 
-// Provider for filtered profiles with memoization
+/// Provider that filters profiles based on search query with memoization.
+/// 
+/// Searches through profile fields: fullName, contactNo, location,
+/// shortBio, and role. Returns all profiles if search query is empty.
+/// 
+/// Parameters:
+/// - `searchQuery`: The search string to filter profiles by
+/// 
+/// Returns an [AsyncValue] containing the filtered list of profiles.
 final filteredProfilesProvider = Provider.family<AsyncValue<List<Profile>>, String>((ref, searchQuery) {
   final allProfilesAsync = ref.watch(allProfilesProvider);
   

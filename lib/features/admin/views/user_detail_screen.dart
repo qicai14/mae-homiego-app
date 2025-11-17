@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/features/admin/providers/admin_providers.dart';
 
+/// Screen displaying detailed user profile information and verification management.
+/// 
+/// Shows user contact information, bio, account details, and provides
+/// functionality to verify or revoke verification status for homeowners.
 class UserDetailScreen extends ConsumerStatefulWidget {
   final Profile profile;
 
@@ -317,6 +321,11 @@ class _UserDetailScreenState extends ConsumerState<UserDetailScreen> {
     );
   }
 
+  /// Handles toggling user verification status.
+  /// 
+  /// Shows a confirmation dialog, then updates the user's verification
+  /// status in the database. Updates local state and invalidates related
+  /// providers to refresh user lists. Shows success/error messages.
   Future<void> _handleVerificationToggle(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
       context: context,
