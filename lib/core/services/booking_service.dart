@@ -65,9 +65,7 @@ class BookingService {
     }
   }
 
-  /// Fetch upcoming and unpaid bookings for a tenant
-  /// Upcoming means check_out_date >= today
-  /// Only returns CONFIRMED bookings (pending bookings should be declined, not paid)
+  /// Get upcoming unpaid bookings (confirmed only)
   static Future<List<Booking>> getUpcomingUnpaidBookings(String tenantId) async {
     try {
       final today = DateTime.now();
@@ -78,7 +76,7 @@ class BookingService {
           .select()
           .eq('tenant_id', tenantId)
           .eq('payment_status', PaymentStatus.unpaid.name)
-          .eq('status', BookingStatus.confirmed.name) // Only confirmed bookings
+          .eq('status', BookingStatus.confirmed.name)
           .gte('check_out_date', todayDateOnly.toIso8601String().split('T')[0])
           .order('check_in_date', ascending: true);
 
@@ -91,7 +89,7 @@ class BookingService {
     }
   }
 
-  /// Fetch upcoming bookings (paid or unpaid) for a tenant
+  /// Get upcoming bookings
   static Future<List<Booking>> getUpcomingBookings(String tenantId) async {
     try {
       final today = DateTime.now();
@@ -113,7 +111,7 @@ class BookingService {
     }
   }
 
-  /// Fetch all bookings for a tenant (regardless of status or date)
+  /// Get all bookings for tenant
   static Future<List<Booking>> getAllBookings(String tenantId) async {
     try {
       final response = await supabase
@@ -131,15 +129,12 @@ class BookingService {
     }
   }
 
-  /// Cancel a booking with 24-hour policy check
-  /// Returns true if cancellation was successful, false otherwise
-  /// Returns a map with 'success' bool and 'refundEligible' bool
+  /// Cancel booking with 24-hour refund policy
   static Future<Map<String, dynamic>> cancelBooking({
     required int bookingId,
-    required String tenantId,
-  }) async {
+      required String tenantId,
+    }) async {
     try {
-      // Fetch the booking
       final bookingResponse = await supabase
           .from('bookings')
           .select()
@@ -153,12 +148,11 @@ class BookingService {
 
       final booking = Booking.fromMap(bookingResponse);
 
-      // Check if booking is already cancelled or declined
       if (booking.status == BookingStatus.cancelled || booking.status == BookingStatus.declined) {
         return {'success': false, 'refundEligible': false, 'error': 'Booking is already cancelled or declined'};
       }
 
-      // Calculate check-in datetime (date + check-in time from constants)
+      // Calculate check-in datetime
       final checkInDateOnly = DateTime(
         booking.checkInDate.year,
         booking.checkInDate.month,
@@ -172,17 +166,11 @@ class BookingService {
         AppConstants.checkInMinute,
       );
 
-      // Get current time
       final now = DateTime.now();
-
-      // Calculate time difference
       final timeDifference = checkInDateTime.difference(now);
       final hoursUntilCheckIn = timeDifference.inHours;
-
-      // Check if refund is eligible (more than 24 hours until check-in)
       final bool refundEligible = hoursUntilCheckIn > 24;
 
-      // Update booking status to cancelled
       await supabase
           .from('bookings')
           .update({
@@ -192,13 +180,12 @@ class BookingService {
           })
           .eq('id', bookingId);
 
-      // Fetch property for notifications
       final property = await PropertyService.getPropertyById(booking.propertyId);
       if (property == null) {
         return {'success': false, 'refundEligible': false, 'error': 'Property not found'};
       }
 
-      // Send notification to homeowner about cancellation
+      // Notify homeowner
       await NotificationService.createNotification(
         userId: property.hostId,
         title: 'Booking Cancelled - ${property.title}',
@@ -207,7 +194,7 @@ class BookingService {
         bookingId: bookingId,
       );
 
-      // If refund is eligible and booking was paid, send notification to tenant
+      // Notify tenant if refund eligible
       if (refundEligible && booking.paymentStatus == PaymentStatus.paid) {
         await NotificationService.createNotification(
           userId: tenantId,
@@ -230,13 +217,11 @@ class BookingService {
     }
   }
 
-  /// Synchronize booking data - automatically decline pending bookings past check-in time
-  /// This should be called on every login to keep data in sync
+  /// Sync bookings: decline pending past check-in
   static Future<int> synchronizeBookings() async {
     try {
       final now = DateTime.now();
       
-      // Fetch all pending bookings
       final response = await supabase
           .from('bookings')
           .select()
@@ -250,12 +235,9 @@ class BookingService {
       int refundedCount = 0;
 
       for (final booking in pendingBookings) {
-        // Parse the check-in date properly (handle date-only strings)
-        // booking.checkInDate might be in UTC or local time, normalize it
         final checkInDate = booking.checkInDate;
         final checkInDateOnly = DateTime(checkInDate.year, checkInDate.month, checkInDate.day);
         
-        // Calculate the check-in datetime (date + check-in time from constants) in local time
         final checkInDateTime = DateTime(
           checkInDateOnly.year,
           checkInDateOnly.month,
@@ -266,11 +248,9 @@ class BookingService {
 
         print('BookingService: Checking booking ${booking.id} - checkInDateTime: $checkInDateTime, now: $now');
 
-        // If current time is past check-in time, decline the booking
         if (now.isAfter(checkInDateTime) || now.isAtSameMomentAs(checkInDateTime)) {
-          // Check if booking is paid - if so, process refund
           if (booking.paymentStatus == PaymentStatus.paid) {
-            // Update status to declined and payment_status to refunded
+            // Decline and refund
             await supabase
                 .from('bookings')
                 .update({
@@ -282,26 +262,23 @@ class BookingService {
             refundedCount++;
             print('BookingService: Declined and refunded booking ${booking.id} (past check-in time, was paid)');
             
-            // Send refund notification to tenant
             try {
-              // Fetch property for notification
               final property = await PropertyService.getPropertyById(booking.propertyId);
               if (property != null) {
                 await NotificationService.createNotification(
                   userId: booking.tenantId,
                   title: 'Refund Processed for ${property.title}',
                   description: 'Your booking has been declined and a refund of RM ${booking.totalPrice.toStringAsFixed(2)} has been processed. The refund will be credited to your original payment method within 7-14 business days.',
-                  type: null, // No specific action type for refund notifications
+                  type: null,
                   bookingId: booking.id,
                 );
                 print('BookingService: Sent refund notification to tenant ${booking.tenantId}');
               }
             } catch (e) {
               print('BookingService: Error sending refund notification: $e');
-              // Don't fail the whole sync if notification fails
             }
           } else {
-            // Booking is unpaid, just decline it
+            // Decline unpaid booking
             await supabase
                 .from('bookings')
                 .update({'status': BookingStatus.declined.name})
@@ -323,14 +300,12 @@ class BookingService {
     }
   }
 
-  /// Fetch bookings for a property with specific statuses
-  /// Only returns bookings with status "pending" or "confirmed" (excludes "declined")
+  /// Get bookings by property and status
   static Future<List<Booking>> getBookingsByPropertyAndStatus({
     required int propertyId,
     List<BookingStatus>? statuses,
   }) async {
     try {
-      // Default to pending and confirmed if no statuses specified
       final statusList = statuses ?? [BookingStatus.pending, BookingStatus.confirmed];
       
       final response = await supabase

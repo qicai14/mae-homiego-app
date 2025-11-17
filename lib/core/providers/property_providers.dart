@@ -2,42 +2,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/property.dart';
 import '../services/property_service.dart';
 
-/// Provider for recommended properties (with caching)
+/// Recommended properties provider
 final recommendedPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getRecommendedProperties();
 });
 
-/// Provider for recently added properties (with caching)
+/// Recently added properties provider
 final recentlyAddedPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getRecentlyAddedProperties();
 });
 
-/// Provider for budget-friendly properties (with caching)
+/// Budget-friendly properties provider
 final budgetFriendlyPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getBudgetFriendlyProperties();
 });
 
-/// Provider for group/family properties (with caching)
+/// Group/family properties provider
 final groupFamilyPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getGroupFamilyProperties();
 });
 
-/// Provider for private stay properties (with caching)
+/// Private stay properties provider
 final privateStayPropertiesProvider =
     FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getPrivateStayProperties();
 });
 
-/// Provider for top host properties (with caching)
+/// Top host properties provider
 final topHostPropertiesProvider = FutureProvider.autoDispose<List<Property>>((ref) async {
   return await PropertyService.getTopHostProperties();
 });
 
-/// Search parameters model
+/// Search parameters
 class SearchParams {
   final String? query;
   final String? propertyType;
@@ -88,7 +88,7 @@ class SearchParams {
   }
 }
 
-/// Provider for search results
+/// Search results provider
 final searchPropertiesProvider =
     FutureProvider.autoDispose.family<List<Property>, SearchParams>((ref, params) async {
   if (params.isEmpty) {
@@ -104,7 +104,7 @@ final searchPropertiesProvider =
   );
 });
 
-/// Provider for search state
+/// Search state provider
 final searchStateProvider = StateProvider<SearchParams>((ref) {
   return const SearchParams();
 });

@@ -5,7 +5,7 @@ import 'package:homiego/core/models/profile.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 
 class FraudDetectionService {
-  /// Detect excessive cancellations (>3 in 24 hours)
+  /// Detect excessive cancellations
   static List<FraudFlag> detectExcessiveCancellations(
     List<Booking> bookings,
     String userId,
@@ -37,23 +37,17 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect multiple accounts from same email
+  /// Detect multiple accounts from email
   static Future<List<FraudFlag>> detectMultipleAccountsFromEmail(
     String email,
   ) async {
     final flags = <FraudFlag>[];
     try {
-      // Query auth.users to find accounts with same email
-      // Note: This requires admin access to auth.users
-      // For now, we'll check profiles table and note that email is in auth.users
       await supabase
           .from('profiles')
           .select('id')
-          .limit(1000); // Adjust as needed
+          .limit(1000);
 
-      // Since we can't directly query auth.users from client,
-      // we'll note this in the flag and recommend server-side check
-      // For implementation, you'd need a Supabase Edge Function or RPC
       flags.add(FraudFlag(
         type: 'multiple_accounts',
         description: 'Multiple accounts detected with same email: $email',
@@ -69,7 +63,7 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect high-value booking anomalies
+  /// Detect high-value anomalies
   static List<FraudFlag> detectHighValueAnomalies(
     List<Booking> allBookings,
     List<Booking> userBookings,
@@ -81,13 +75,11 @@ class FraudDetectionService {
       return flags;
     }
 
-    // Calculate average booking price across all bookings
     final averagePrice = allBookings
             .map((b) => b.totalPrice)
             .reduce((a, b) => a + b) /
         allBookings.length;
 
-    // Check for bookings significantly higher than average (3x or more)
     final threshold = averagePrice * 3;
     final highValueBookings = userBookings
         .where((b) => b.tenantId == userId && b.totalPrice > threshold)
@@ -115,7 +107,7 @@ class FraudDetectionService {
     return flags;
   }
 
-  /// Detect rapid bookings (multiple within minutes)
+  /// Detect rapid bookings
   static List<FraudFlag> detectRapidBookings(
     List<Booking> bookings,
     String userId,
@@ -129,9 +121,8 @@ class FraudDetectionService {
     final userBookings = bookings
         .where((b) => b.tenantId == userId)
         .toList()
-      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    // Check for bookings within 5 minutes of each other
     for (int i = 0; i < userBookings.length - 1; i++) {
       final current = userBookings[i];
       final next = userBookings[i + 1];
@@ -150,14 +141,14 @@ class FraudDetectionService {
             'second_booking_time': next.createdAt.toIso8601String(),
           },
         ));
-        break; // Only flag once per user
+        break;
       }
     }
 
     return flags;
   }
 
-  /// Calculate fraud score for a user (0-100)
+  /// Calculate user fraud score (0-100)
   static double calculateUserFraudScore(List<FraudFlag> flags) {
     if (flags.isEmpty) return 0.0;
 
@@ -179,11 +170,10 @@ class FraudDetectionService {
       }
     }
 
-    // Cap at 100
     return score > 100 ? 100.0 : score;
   }
 
-  /// Calculate fraud score for a property (0-100)
+  /// Calculate property fraud score (0-100)
   static double calculatePropertyFraudScore(List<FraudFlag> flags) {
     if (flags.isEmpty) return 0.0;
 
@@ -196,7 +186,6 @@ class FraudDetectionService {
         case 'rapid_bookings':
           score += 25.0;
           break;
-        // Properties can have flags from their bookings
         default:
           score += 15.0;
       }
@@ -205,7 +194,7 @@ class FraudDetectionService {
     return score > 100 ? 100.0 : score;
   }
 
-  /// Get all bookings for fraud analysis
+  /// Get all bookings
   static Future<List<Booking>> getAllBookings() async {
     try {
       final response = await supabase
@@ -222,30 +211,25 @@ class FraudDetectionService {
     }
   }
 
-  /// Get user email from auth (requires admin access or Edge Function)
+  /// Get user email (requires Edge Function)
   static Future<String?> getUserEmail(String userId) async {
     try {
-      // Note: Direct access to auth.users requires admin privileges
-      // In production, use a Supabase Edge Function or RPC
-      // For now, we'll return null and note it in the UI
       return null;
     } catch (e) {
       return null;
     }
   }
 
-  /// Analyze all users for fraud
+  /// Analyze all users
   static Future<List<UserFraudScore>> analyzeAllUsers() async {
     final bookings = await getAllBookings();
     final userScores = <UserFraudScore>[];
     final userIds = <String>{};
 
-    // Collect all unique user IDs
     for (var booking in bookings) {
       userIds.add(booking.tenantId);
     }
 
-    // Analyze each user
     for (var userId in userIds) {
       final userBookings =
           bookings.where((b) => b.tenantId == userId).toList();
@@ -263,7 +247,6 @@ class FraudDetectionService {
           .map((b) => b.totalPrice)
           .fold(0.0, (a, b) => a + b);
 
-      // Try to get user profile for name/email
       Profile? profile;
       try {
         final profileResponse = await supabase
@@ -275,7 +258,6 @@ class FraudDetectionService {
           profile = Profile.fromMap(profileResponse);
         }
       } catch (e) {
-        // Profile not found or error
       }
 
       if (flags.isNotEmpty || score > 0) {
@@ -292,23 +274,20 @@ class FraudDetectionService {
       }
     }
 
-    // Sort by score descending
     userScores.sort((a, b) => b.score.compareTo(a.score));
     return userScores;
   }
 
-  /// Analyze all properties for fraud
+  /// Analyze all properties
   static Future<List<PropertyFraudScore>> analyzeAllProperties() async {
     final bookings = await getAllBookings();
     final propertyScores = <PropertyFraudScore>[];
     final propertyIds = <int>{};
 
-    // Collect all unique property IDs
     for (var booking in bookings) {
       propertyIds.add(booking.propertyId);
     }
 
-    // Analyze each property
     for (var propertyId in propertyIds) {
       final propertyBookings =
           bookings.where((b) => b.propertyId == propertyId).toList();
@@ -317,7 +296,6 @@ class FraudDetectionService {
 
       final flags = <FraudFlag>[];
       
-      // Check for high-value anomalies
       final allBookings = await getAllBookings();
       final avgPrice = allBookings.isNotEmpty
           ? allBookings.map((b) => b.totalPrice).reduce((a, b) => a + b) /
@@ -347,7 +325,6 @@ class FraudDetectionService {
         ));
       }
 
-      // Check for rapid bookings on this property
       propertyBookings.sort((a, b) => a.createdAt.compareTo(b.createdAt));
       for (int i = 0; i < propertyBookings.length - 1; i++) {
         final timeDiff = propertyBookings[i + 1].createdAt
@@ -367,7 +344,6 @@ class FraudDetectionService {
 
       final score = calculatePropertyFraudScore(flags);
 
-      // Get property details
       Property? property;
       Profile? hostProfile;
       try {
@@ -390,7 +366,6 @@ class FraudDetectionService {
           }
         }
       } catch (e) {
-        // Property not found or error
       }
 
       if (flags.isNotEmpty || score > 0) {
@@ -408,17 +383,15 @@ class FraudDetectionService {
       }
     }
 
-    // Sort by score descending
     propertyScores.sort((a, b) => b.score.compareTo(a.score));
     return propertyScores;
   }
 
-  /// Get system-wide fraud summary
+  /// Get system fraud summary
   static Future<SystemFraudSummary> getSystemFraudSummary() async {
     final userScores = await analyzeAllUsers();
     final propertyScores = await analyzeAllProperties();
 
-    // Calculate overall score (average of all flagged entities)
     double overallScore = 0.0;
     int totalEntities = 0;
 
@@ -436,7 +409,6 @@ class FraudDetectionService {
       overallScore = overallScore / totalEntities;
     }
 
-    // Count flags by type
     final flagCounts = <String, int>{};
     for (var user in userScores) {
       for (var flag in user.flags) {

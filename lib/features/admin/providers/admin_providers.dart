@@ -5,10 +5,10 @@ import 'package:homiego/core/models/fraud_detection.dart';
 import 'package:homiego/core/services/supabase_client.dart';
 import 'package:homiego/features/admin/services/fraud_detection_service.dart';
 
-// Rental Statistics Model
+// Rental statistics
 class RentalStatistics {
-  final int inactiveProperties; // Pending or Rejected
-  final int activeProperties; // Approved
+  final int inactiveProperties;
+  final int activeProperties;
 
   RentalStatistics({
     required this.inactiveProperties,
@@ -16,7 +16,7 @@ class RentalStatistics {
   });
 }
 
-// Booking Statistics Model
+// Booking statistics
 class BookingStatistics {
   final int totalBookings;
   final int pendingBookings;
@@ -39,10 +39,9 @@ class BookingStatistics {
   });
 }
 
-// Provider for rental statistics
+// Rental statistics provider
 final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
   try {
-    // Fetch all properties with their status
     final propertiesResponse = await supabase
         .from('properties')
         .select('status');
@@ -74,18 +73,15 @@ final rentalStatisticsProvider = FutureProvider<RentalStatistics>((ref) async {
 });
 
 
-// Provider for booking statistics
+// Booking statistics provider
 final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async {
   try {
-    // DEBUG: Check session
     final session = supabase.auth.currentSession;
     print("=== BOOKING STATS SESSION TOKEN (first 20 chars) ===");
     print(session?.accessToken.substring(0, 20) ?? "NO SESSION FOUND");
 
-    // DEBUG: Check user ID
     print("CURRENT USER ID: ${supabase.auth.currentUser?.id}");
 
-    // Perform the query
     final bookingsResponse = await supabase
         .from('bookings')
         .select('status, payment_status, total_price');
@@ -95,7 +91,6 @@ final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async 
     final bookingsList = bookingsResponse as List? ?? [];
     print("BOOKINGS COUNT FROM SUPABASE: ${bookingsList.length}");
 
-    // The rest of your logic remains unchanged
     int totalBookings = bookingsList.length;
     int pendingCount = 0;
     int confirmedCount = 0;
@@ -148,7 +143,7 @@ final bookingStatisticsProvider = FutureProvider<BookingStatistics>((ref) async 
   }
 });
 
-// Provider for pending properties (status == 'pending')
+// Pending properties provider
 final pendingPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   try {
     final response = await supabase
@@ -166,7 +161,7 @@ final pendingPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   }
 });
 
-// Provider for unverified profiles (homeowners)
+// Unverified profiles provider
 final unverifiedProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   try {
     final response = await supabase
@@ -185,16 +180,16 @@ final unverifiedProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   }
 });
 
-// Provider for updating property status (pending, approved, or rejected)
+// Update property status provider
 final updatePropertyStatusProvider =
     FutureProvider.family<bool, Map<String, dynamic>>((ref, params) async {
   try {
     final propertyId = params['property_id'] as int;
-    final status = params['status'] as String; // 'pending', 'approved', or 'rejected'
+    final status = params['status'] as String;
 
     print('Attempting to update property $propertyId to status: $status');
 
-    // First, verify the property exists and get its current status
+    // Verify property exists
     try {
       final checkResponse = await supabase
           .from('properties')
@@ -208,7 +203,6 @@ final updatePropertyStatusProvider =
       throw Exception('Property with ID $propertyId not found or not accessible');
     }
 
-    // Attempt the update
     final response = await supabase
         .from('properties')
         .update({'status': status})
@@ -217,14 +211,11 @@ final updatePropertyStatusProvider =
 
     print('Update response: $response');
 
-    // Verify the update was successful
     final responseList = response as List?;
     if (responseList == null || responseList.isEmpty) {
-      // Check if it's an RLS issue by trying to see what error we get
       print('Update returned empty result. This might be an RLS policy issue.');
       print('Current user: ${supabase.auth.currentUser?.id}');
       
-      // Try to get user's role
       try {
         final profileResponse = await supabase
             .from('profiles')
@@ -241,8 +232,7 @@ final updatePropertyStatusProvider =
 
     print('Update successful! Updated property: ${responseList[0]}');
 
-    // Invalidate the pending properties provider to refresh the list
-    // Use Future.microtask to ensure invalidation happens after the update completes
+    // Invalidate providers after update
     Future.microtask(() {
       ref.invalidate(pendingPropertiesProvider);
       ref.invalidate(rentalStatisticsProvider);
@@ -256,7 +246,7 @@ final updatePropertyStatusProvider =
   }
 });
 
-// Provider for updating profile verification
+// Update profile verification provider
 final updateProfileVerificationProvider =
     FutureProvider.family<bool, Map<String, dynamic>>((ref, params) async {
   try {
@@ -265,7 +255,7 @@ final updateProfileVerificationProvider =
 
     print('Attempting to update profile $profileId to is_verified: $isVerified');
 
-    // First, verify the profile exists
+    // Verify profile exists
     try {
       final checkResponse = await supabase
           .from('profiles')
@@ -279,7 +269,6 @@ final updateProfileVerificationProvider =
       throw Exception('Profile with ID $profileId not found or not accessible');
     }
 
-    // Attempt the update
     final response = await supabase
         .from('profiles')
         .update({'is_verified': isVerified})
@@ -288,13 +277,11 @@ final updateProfileVerificationProvider =
 
     print('Update response: $response');
 
-    // Verify the update was successful
     final responseList = response as List?;
     if (responseList == null || responseList.isEmpty) {
       print('Update returned empty result. This might be an RLS policy issue.');
       print('Current user: ${supabase.auth.currentUser?.id}');
       
-      // Try to get user's role
       try {
         final profileResponse = await supabase
             .from('profiles')
@@ -311,8 +298,7 @@ final updateProfileVerificationProvider =
 
     print('Update successful! Updated profile: ${responseList[0]}');
 
-    // Invalidate the unverified profiles provider to refresh the list
-    // Use Future.microtask to ensure invalidation happens after the update completes
+    // Invalidate provider after update
     Future.microtask(() {
       ref.invalidate(unverifiedProfilesProvider);
     });
@@ -325,7 +311,7 @@ final updateProfileVerificationProvider =
   }
 });
 
-// Provider for system fraud summary
+// System fraud summary provider
 final systemFraudSummaryProvider = FutureProvider<SystemFraudSummary>((ref) async {
   try {
     return await FraudDetectionService.getSystemFraudSummary();
@@ -334,7 +320,7 @@ final systemFraudSummaryProvider = FutureProvider<SystemFraudSummary>((ref) asyn
   }
 });
 
-// Provider for user fraud scores
+// User fraud scores provider
 final userFraudScoresProvider = FutureProvider<List<UserFraudScore>>((ref) async {
   try {
     return await FraudDetectionService.analyzeAllUsers();
@@ -343,7 +329,7 @@ final userFraudScoresProvider = FutureProvider<List<UserFraudScore>>((ref) async
   }
 });
 
-// Provider for property fraud scores
+// Property fraud scores provider
 final propertyFraudScoresProvider = FutureProvider<List<PropertyFraudScore>>((ref) async {
   try {
     return await FraudDetectionService.analyzeAllProperties();
@@ -352,7 +338,7 @@ final propertyFraudScoresProvider = FutureProvider<List<PropertyFraudScore>>((re
   }
 });
 
-// Provider for all properties (excluding admin properties)
+// All properties provider
 final allPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   try {
     final response = await supabase
@@ -369,7 +355,7 @@ final allPropertiesProvider = FutureProvider<List<Property>>((ref) async {
   }
 });
 
-// Provider for all profiles (excluding admin)
+// All profiles provider (excluding admin)
 final allProfilesProvider = FutureProvider<List<Profile>>((ref) async {
   try {
     final response = await supabase

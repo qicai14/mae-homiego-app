@@ -48,15 +48,14 @@ class _ActivityHistoryScreenState extends ConsumerState<ActivityHistoryScreen> {
       final allBookings = await BookingService.getAllBookings(user.id);
       final now = DateTime.now();
       
-      // Filter: Exclude declined bookings (they are rejected offers, not history)
-      // Then filter: Only show bookings where current date/time > checkout date/time (completed bookings)
+
+      // Only show completed bookings
       final completedBookings = allBookings.where((booking) {
-        // Exclude declined bookings
         if (booking.status == BookingStatus.declined) {
           return false;
         }
         
-        // Calculate checkout datetime (checkout date + checkout hour)
+        // Calculate checkout datetime
         final checkOutDateOnly = DateTime(
           booking.checkOutDate.year,
           booking.checkOutDate.month,
@@ -74,7 +73,6 @@ class _ActivityHistoryScreenState extends ConsumerState<ActivityHistoryScreen> {
         return now.isAfter(checkOutDateTime);
       }).toList();
       
-      // Sort by check-in date descending (most recent check-in dates first)
       completedBookings.sort((a, b) => b.checkInDate.compareTo(a.checkInDate));
       
       final properties = <int, Property>{};

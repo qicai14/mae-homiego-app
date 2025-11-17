@@ -2,7 +2,7 @@ import '../models/notification.dart';
 import '../services/supabase_client.dart';
 
 class NotificationService {
-  /// Fetch all notifications for the current user
+  /// Get all notifications for user
   static Future<List<Notification>> getNotifications(String userId) async {
     try {
       print('NotificationService: Fetching notifications for user $userId');
@@ -34,7 +34,7 @@ class NotificationService {
     }
   }
 
-  /// Mark a notification as read
+  /// Mark notification as read
   static Future<bool> markAsRead(int notificationId) async {
     try {
       await supabase
@@ -48,7 +48,7 @@ class NotificationService {
     }
   }
 
-  /// Mark all notifications as read for a user
+  /// Mark all notifications as read
   static Future<bool> markAllAsRead(String userId) async {
     try {
       await supabase
@@ -63,7 +63,7 @@ class NotificationService {
     }
   }
 
-  /// Delete a notification
+  /// Delete notification
   static Future<bool> deleteNotification(int notificationId) async {
     try {
       await supabase
@@ -77,7 +77,7 @@ class NotificationService {
     }
   }
 
-  /// Clear all notifications for a user (delete all)
+  /// Clear all notifications
   static Future<bool> clearInbox(String userId) async {
     try {
       await supabase
@@ -91,9 +91,7 @@ class NotificationService {
     }
   }
 
-  /// Create a notification for a user
-  /// Prevents duplicates by checking for existing notifications with same type and booking_id
-  /// Does NOT check is_read status to prevent duplicates even if notification was read
+  /// Create notification (prevents duplicates)
   static Future<bool> createNotification({
     required String userId,
     required String title,
@@ -102,9 +100,7 @@ class NotificationService {
     int? bookingId,
   }) async {
     try {
-      // Check if notification already exists (to avoid duplicates)
-      // For payment/review notifications, check by type and booking_id (most reliable)
-      // This ensures we don't create duplicate notifications for the same booking
+      // Check for duplicates
       if (type != null && bookingId != null) {
         final existing = await supabase
             .from('notifications')
@@ -115,12 +111,11 @@ class NotificationService {
             .maybeSingle();
 
         if (existing != null) {
-          // Notification already exists, don't create duplicate (regardless of read status)
           print('NotificationService: Duplicate notification prevented - ${type.name} for booking $bookingId');
-          return true; // Return true because notification exists (successful state)
+          return true;
         }
       } else if (type != null) {
-        // Fallback: check by type and title if booking_id is not available
+        // Check by type and title
         final existing = await supabase
             .from('notifications')
             .select()
@@ -134,7 +129,7 @@ class NotificationService {
           return true;
         }
       } else {
-        // For notifications without type, check by title and description to prevent duplicates
+        // Check by title and description
         final existing = await supabase
             .from('notifications')
             .select()
@@ -165,7 +160,7 @@ class NotificationService {
     }
   }
   
-  /// Delete notification by booking ID and type (used when payment is completed)
+  /// Delete notification by booking and type
   static Future<bool> deleteNotificationByBooking({
     required String userId,
     required int bookingId,

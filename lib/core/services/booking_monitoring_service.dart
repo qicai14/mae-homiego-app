@@ -7,11 +7,11 @@ import 'booking_service.dart';
 import 'notification_service.dart';
 import 'supabase_client.dart';
 
-// Lock to prevent concurrent notification creation
+// Lock for concurrent notification creation
 final _notificationCreationLock = <String, bool>{};
 
 enum BookingNotificationType {
-  reviewRequested, // At check-out time, paid booking
+  reviewRequested, // Checkout review
 }
 
 class BookingNotification {
@@ -29,7 +29,7 @@ class BookingNotification {
 }
 
 class BookingMonitoringService {
-  /// Get the check-in datetime for a booking
+  /// Get check-in datetime
   static DateTime getCheckInDateTime(DateTime checkInDate) {
     return DateTime(
       checkInDate.year,
@@ -40,7 +40,7 @@ class BookingMonitoringService {
     );
   }
 
-  /// Get the check-out datetime for a booking
+  /// Get check-out datetime
   static DateTime getCheckOutDateTime(DateTime checkOutDate) {
     return DateTime(
       checkOutDate.year,
@@ -51,28 +51,23 @@ class BookingMonitoringService {
     );
   }
 
-  /// Check bookings and return list of notifications that need to be created
-  /// This checks for:
-  /// 1. Check-out time reached for paid CONFIRMED bookings -> review notification
-  /// NOTE: PENDING bookings should be declined by synchronizeBookings, not processed here
-  /// NOTE: Payment is done at booking creation, so no payment notifications needed
+  /// Check bookings for review notifications at checkout
   static Future<List<BookingNotification>> checkBookings(String tenantId) async {
     final notifications = <BookingNotification>[];
     final now = DateTime.now();
 
-    // Fetch all upcoming bookings (both paid and unpaid)
+    // Fetch upcoming bookings
     final bookings = await BookingService.getUpcomingBookings(tenantId);
 
     for (final booking in bookings) {
-      // PRIORITY FIX: Only process CONFIRMED bookings
-      // PENDING bookings should be handled by synchronizeBookings (auto-decline)
+      // Process only confirmed bookings
       if (booking.status != BookingStatus.confirmed) {
         continue; // Skip pending/declined/cancelled bookings
       }
 
       final checkOutTime = getCheckOutDateTime(booking.checkOutDate);
       
-      // Fetch property for notification
+      // Fetch property
       final propertyResponse = await supabase
           .from('properties')
           .select()
@@ -82,11 +77,10 @@ class BookingMonitoringService {
       if (propertyResponse == null) continue;
       final property = Property.fromMap(propertyResponse);
 
-      // Check-out time reached, booking is paid
-      // Only send review notification if review_status is null (not yet sent/declined)
+      // Check if checkout time reached for paid booking
       if (booking.paymentStatus == PaymentStatus.paid) {
         if (now.isAfter(checkOutTime) || now.isAtSameMomentAs(checkOutTime)) {
-          // Only create review notification if review_status is null
+          // Create review notification if not sent yet
           if (booking.reviewStatus == null) {
             notifications.add(BookingNotification(
               type: BookingNotificationType.reviewRequested,
@@ -102,16 +96,15 @@ class BookingMonitoringService {
     return notifications;
   }
 
-  /// Create notifications in the database and return created notifications
-  /// Uses a lock to prevent concurrent creation of the same notifications
+  /// Create notifications with lock to prevent duplicates
   static Future<List<BookingNotification>> createNotifications(
     String tenantId,
     List<BookingNotification> notifications,
   ) async {
-    // Use a lock key based on tenant ID to prevent concurrent notification creation
+    // Lock by tenant ID
     final lockKey = 'notifications_$tenantId';
     
-    // If another process is already creating notifications for this tenant, wait
+    // Skip if already processing
     if (_notificationCreationLock[lockKey] == true) {
       print('BookingMonitoringService: Notification creation already in progress for tenant $tenantId, skipping...');
       return [];
@@ -128,7 +121,7 @@ class BookingMonitoringService {
 
         switch (notif.type) {
         case BookingNotificationType.reviewRequested:
-          // Create notification and set review_status to pending
+          // Create review notification
           success = await NotificationService.createNotification(
             userId: tenantId,
             title: 'How was your stay at ${notif.property.title}?',
@@ -137,7 +130,7 @@ class BookingMonitoringService {
             bookingId: notif.booking.id,
           );
           
-          // Update booking review_status to pending when notification is created
+          // Update review status to pending
           if (success) {
             try {
               await supabase
@@ -146,7 +139,7 @@ class BookingMonitoringService {
                   .eq('id', notif.booking.id);
             } catch (e) {
               print('BookingMonitoringService: Error updating review_status to pending: $e');
-              // Don't fail the whole operation if status update fails
+              // Continue on error
             }
           }
           break;
@@ -159,25 +152,22 @@ class BookingMonitoringService {
 
       return created;
     } finally {
-      // Release lock after a short delay to ensure all notifications are processed
+      // Release lock after delay
       Future.delayed(const Duration(milliseconds: 500), () {
         _notificationCreationLock[lockKey] = false;
       });
     }
   }
 
-  /// Get the next notification time for a booking
-  /// Returns null if no notification is needed
-  /// Only handles review notifications (payment is done at booking creation)
+  /// Get next notification time (checkout for review)
   static DateTime? getNextNotificationTime(Booking booking, DateTime now) {
     final checkOutTime = getCheckOutDateTime(booking.checkOutDate);
 
     if (booking.paymentStatus == PaymentStatus.paid) {
-      // If before check-out time, return check-out time
+      // Return checkout time if before, null if past
       if (now.isBefore(checkOutTime)) {
         return checkOutTime;
       }
-      // Already past checkout, notification needed immediately
       return null;
     }
 
@@ -185,7 +175,6 @@ class BookingMonitoringService {
   }
 
   /// Calculate duration until next notification
-  /// Returns null if notification should happen immediately
   static Duration? getDurationUntilNotification(
     Booking booking,
     DateTime now,

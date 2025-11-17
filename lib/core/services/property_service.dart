@@ -7,22 +7,21 @@ import '../models/booking.dart';
 import '../services/supabase_client.dart';
 import '../constants/app_constants.dart';
 
-/// Service for fetching and filtering properties
+/// Property service
 class PropertyService {
-  /// Fetch recommended properties (5 random listings)
+  /// Get recommended properties (random)
   static Future<List<Property>> getRecommendedProperties() async {
     try {
       final response = await supabase
           .from('properties')
           .select()
           .eq('status', 'approved')
-          .limit(AppConstants.recommendedCount * 3); // Fetch more to randomize
+          .limit(AppConstants.recommendedCount * 3);
 
       final properties = (response as List)
           .map((json) => Property.fromMap(json))
           .toList();
 
-      // Shuffle and take first 5
       properties.shuffle(Random());
       return properties.take(AppConstants.recommendedCount).toList();
     } catch (e) {
@@ -31,7 +30,7 @@ class PropertyService {
     }
   }
 
-  /// Fetch recently added properties
+  /// Get recently added properties
   static Future<List<Property>> getRecentlyAddedProperties() async {
     try {
       final response = await supabase
@@ -50,7 +49,7 @@ class PropertyService {
     }
   }
 
-  /// Fetch budget-friendly properties
+  /// Get budget-friendly properties
   static Future<List<Property>> getBudgetFriendlyProperties() async {
     try {
       final response = await supabase
@@ -69,7 +68,7 @@ class PropertyService {
     }
   }
 
-  /// Fetch properties suitable for groups/families
+  /// Get group/family properties
   static Future<List<Property>> getGroupFamilyProperties() async {
     try {
       final response = await supabase
@@ -88,7 +87,7 @@ class PropertyService {
     }
   }
 
-  /// Fetch private room properties
+  /// Get private room properties
   static Future<List<Property>> getPrivateStayProperties() async {
     try {
       final response = await supabase
@@ -106,10 +105,9 @@ class PropertyService {
     }
   }
 
-  /// Fetch properties from top hosts (hosts with high ratings/many reviews)
+  /// Get top host properties
   static Future<List<Property>> getTopHostProperties() async {
     try {
-      // First, get all approved properties
       final propertiesResponse = await supabase
           .from('properties')
           .select()
@@ -121,35 +119,28 @@ class PropertyService {
 
       if (allProperties.isEmpty) return [];
 
-      // Get all reviews to calculate host ratings
       final reviewsResponse = await supabase.from('reviews').select();
-
       final allReviews = (reviewsResponse as List)
           .map((json) => Review.fromMap(json))
           .toList();
 
-      // Get all bookings to map booking_id to property_id
       final bookingsResponse = await supabase.from('bookings').select();
       final allBookings = (bookingsResponse as List)
           .map((json) => Booking.fromMap(json))
           .toList();
 
-      // Create a map from booking_id to property_id
       final bookingToPropertyMap = <int, int>{};
       for (final booking in allBookings) {
         bookingToPropertyMap[booking.id] = booking.propertyId;
       }
 
-      // Calculate average rating and review count per host
       final Map<String, List<int>> hostRatings = {};
       final Map<String, int> hostReviewCounts = {};
 
       for (final review in allReviews) {
-        // Get property_id from booking_id
         final propertyId = bookingToPropertyMap[review.bookingId];
         if (propertyId == null) continue;
 
-        // Find the property to get host_id
         final property = allProperties.firstWhere(
           (p) => p.id == propertyId,
           orElse: () => allProperties.first,
@@ -160,14 +151,12 @@ class PropertyService {
             (hostReviewCounts[property.hostId] ?? 0) + 1;
       }
 
-      // Calculate average ratings
       final Map<String, double> hostAvgRatings = {};
       hostRatings.forEach((hostId, ratings) {
         hostAvgRatings[hostId] =
             ratings.reduce((a, b) => a + b) / ratings.length;
       });
 
-      // Filter hosts with high ratings (>= 4.0) and multiple reviews (>= 3)
       final topHostIds = hostAvgRatings.entries
           .where((entry) =>
               entry.value >= 4.0 &&
@@ -175,12 +164,10 @@ class PropertyService {
           .map((entry) => entry.key)
           .toSet();
 
-      // Get properties from top hosts
       final topHostProperties = allProperties
           .where((property) => topHostIds.contains(property.hostId))
           .toList();
 
-      // Sort by host rating (descending)
       topHostProperties.sort((a, b) {
         final ratingA = hostAvgRatings[a.hostId] ?? 0.0;
         final ratingB = hostAvgRatings[b.hostId] ?? 0.0;
@@ -194,7 +181,7 @@ class PropertyService {
     }
   }
 
-  /// Get the first image URL for a property
+  /// Get first property image URL
   static Future<String?> getPropertyImageUrl(int propertyId) async {
     try {
       final response = await supabase
@@ -209,21 +196,17 @@ class PropertyService {
 
       final image = PropertyImage.fromMap(response);
       
-      // If storage_path is already a full URL, return it
       if (image.storagePath.startsWith('http://') || 
           image.storagePath.startsWith('https://')) {
         return image.storagePath;
       }
       
-      // Otherwise, get the public URL from Supabase storage
-      // Assuming images are stored in a 'property-images' bucket
       try {
         final publicUrl = supabase.storage
             .from('property-images')
             .getPublicUrl(image.storagePath);
         return publicUrl;
       } catch (e) {
-        // If storage bucket doesn't exist or path is invalid, return null
         print('Error getting public URL from storage: $e');
         return null;
       }
@@ -233,10 +216,9 @@ class PropertyService {
     }
   }
 
-  /// Get average rating and review count for a property
+  /// Get property rating and review count
   static Future<Map<String, dynamic>> getPropertyRating(int propertyId) async {
     try {
-      // Get all bookings for this property
       final bookingsResponse = await supabase
           .from('bookings')
           .select('id')
@@ -248,7 +230,6 @@ class PropertyService {
         return {'rating': 0.0, 'reviewCount': 0};
       }
 
-      // Get all reviews for these bookings
       final reviewsResponse = await supabase
           .from('reviews')
           .select()
@@ -275,7 +256,7 @@ class PropertyService {
     }
   }
 
-  /// Search properties with filters
+  /// Search properties
   static Future<List<Property>> searchProperties({
     String? query,
     String? propertyType,
@@ -290,17 +271,14 @@ class PropertyService {
           .select()
           .eq('status', 'approved');
 
-      // Filter by property name (title)
       if (query != null && query.isNotEmpty) {
         queryBuilder = queryBuilder.ilike('title', '%$query%');
       }
 
-      // Filter by property type
       if (propertyType != null && propertyType.isNotEmpty) {
         queryBuilder = queryBuilder.eq('property_type', propertyType);
       }
 
-      // Filter by price range
       if (minPrice != null) {
         queryBuilder = queryBuilder.gte('price_per_night', minPrice);
       }
@@ -308,7 +286,6 @@ class PropertyService {
         queryBuilder = queryBuilder.lte('price_per_night', maxPrice);
       }
 
-      // Filter by max guests
       if (minMaxGuests != null) {
         queryBuilder = queryBuilder.gte('max_guests', minMaxGuests);
       }
@@ -319,7 +296,6 @@ class PropertyService {
           .map((json) => Property.fromMap(json))
           .toList();
 
-      // Filter by rating (requires fetching reviews)
       if (minRating != null && minRating > 0) {
         final filteredProperties = <Property>[];
         for (final property in properties) {
@@ -339,7 +315,7 @@ class PropertyService {
     }
   }
 
-  /// Get all images for a property
+  /// Get all property images
   static Future<List<String>> getPropertyImages(int propertyId) async {
     try {
       final response = await supabase
@@ -354,12 +330,10 @@ class PropertyService {
 
       final imageUrls = <String>[];
       for (final image in images) {
-        // If storage_path is already a full URL, use it
         if (image.storagePath.startsWith('http://') || 
             image.storagePath.startsWith('https://')) {
           imageUrls.add(image.storagePath);
         } else {
-          // Otherwise, get the public URL from Supabase storage
           try {
             final publicUrl = supabase.storage
                 .from('property-images')
@@ -377,10 +351,9 @@ class PropertyService {
     }
   }
 
-  /// Get reviews for a property
+  /// Get property reviews
   static Future<List<Review>> getPropertyReviews(int propertyId) async {
     try {
-      // Get all bookings for this property
       final bookingsResponse = await supabase
           .from('bookings')
           .select('id')
@@ -392,7 +365,6 @@ class PropertyService {
         return [];
       }
 
-      // Get all reviews for these bookings
       final response = await supabase
           .from('reviews')
           .select()
@@ -408,7 +380,7 @@ class PropertyService {
     }
   }
 
-  /// Get host profile by host ID
+  /// Get host profile
   static Future<Profile?> getHostProfile(String hostId) async {
     try {
       final response = await supabase
@@ -425,7 +397,7 @@ class PropertyService {
     }
   }
 
-  /// Get tenant name for a review
+  /// Get tenant name
   static Future<String?> getTenantName(String tenantId) async {
     try {
       final response = await supabase

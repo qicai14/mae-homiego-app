@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:homiego/core/models/property.dart';
 
-/// State class for property comparison
+/// Property comparison state
 @immutable
 class ComparisonState {
   final Property? slot1;
@@ -25,48 +25,39 @@ class ComparisonState {
     );
   }
 
-  /// Check if both slots are empty
   bool get isEmpty => slot1 == null && slot2 == null;
-
-  /// Check if both slots are filled
   bool get isFull => slot1 != null && slot2 != null;
 
-  /// Check if a property is already in either slot
+  /// Check if property exists in slots
   bool containsProperty(Property property) {
     return (slot1?.id == property.id) || (slot2?.id == property.id);
   }
 }
 
-/// Notifier for managing comparison state
+/// Comparison state manager
 class ComparisonNotifier extends StateNotifier<ComparisonState> {
   ComparisonNotifier() : super(const ComparisonState());
 
-  /// Add or replace a property in a slot
-  /// If property already exists in a slot, replace it in that slot
-  /// Otherwise, add to the first available slot
+  /// Add or replace property in slot
   void addOrReplace(Property property) {
-    // Check if property already exists in either slot
     if (state.slot1?.id == property.id) {
-      // Already in slot1, no need to change
       return;
     }
     if (state.slot2?.id == property.id) {
-      // Already in slot2, no need to change
       return;
     }
 
-    // Find first available slot or replace slot1 if both are full
+    // Find available slot or replace slot1
     if (state.slot1 == null) {
       state = state.copyWith(slot1: property);
     } else if (state.slot2 == null) {
       state = state.copyWith(slot2: property);
     } else {
-      // Both slots full, replace slot1
       state = state.copyWith(slot1: property);
     }
   }
 
-  /// Remove property from a specific slot (1 or 2)
+  /// Remove property from slot
   void removeFromSlot(int slotIndex) {
     if (slotIndex == 1) {
       state = state.copyWith(clearSlot1: true);
@@ -75,12 +66,12 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     }
   }
 
-  /// Reset both slots
+  /// Reset slots
   void reset() {
     state = const ComparisonState();
   }
 
-  /// Add property to a specific slot (replaces if already filled)
+  /// Set property in slot
   void setSlot(int slotIndex, Property? property) {
     if (slotIndex == 1) {
       state = state.copyWith(slot1: property);
@@ -90,7 +81,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   }
 }
 
-/// Provider for property comparison state
+/// Comparison provider
 final comparisonProvider = StateNotifierProvider<ComparisonNotifier, ComparisonState>((ref) {
   return ComparisonNotifier();
 });
